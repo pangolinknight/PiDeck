@@ -38,6 +38,7 @@ const api = {
     create: (input: CreateAgentInput) => ipcRenderer.invoke(ipcChannels.agentsCreate, input) as Promise<AgentTab>,
     stop: (agentId: string) => ipcRenderer.invoke(ipcChannels.agentsStop, agentId) as Promise<void>,
     prompt: (input: SendPromptInput) => ipcRenderer.invoke(ipcChannels.agentsPrompt, input) as Promise<void>,
+    abort: (agentId: string) => ipcRenderer.invoke(ipcChannels.agentsAbort, agentId) as Promise<void>,
     exportHtml: (agentId: string) => ipcRenderer.invoke(ipcChannels.agentsExportHtml, agentId) as Promise<{ path: string }>,
     reload: (agentId: string) => ipcRenderer.invoke(ipcChannels.agentsReload, agentId) as Promise<void>,
     runtimeState: (agentId: string) => ipcRenderer.invoke(ipcChannels.agentsRuntimeState, agentId) as Promise<AgentRuntimeState>,

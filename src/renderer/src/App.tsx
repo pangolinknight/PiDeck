@@ -49,6 +49,8 @@ export function App() {
   const activeAgent = agents.find(agent => agent.id === activeAgentId);
   const activeMessages = activeAgentId ? messagesByAgent[activeAgentId] ?? [] : [];
   const activeRuntimeState = activeAgentId ? runtimeStateByAgent[activeAgentId] : undefined;
+  const renderedMessages = useMemo(() => groupToolMessages(activeMessages), [activeMessages]);
+  const isAwaitingAssistant = Boolean(activeAgent && (activeAgent.status === "running" || activeRuntimeState?.isStreaming) && activeMessages.at(-1)?.role !== "assistant");
   const outlineItems = useMemo(() => buildOutline(activeMessages), [activeMessages]);
   const flatFiles = useMemo(() => flattenFiles(files), [files]);
   const visibleAgents = useMemo(() => agents.filter(agent => !activeProjectId || agent.projectId === activeProjectId), [agents, activeProjectId]);
@@ -212,6 +214,12 @@ export function App() {
     await api.agents.stop(agentId);
   }
 
+  async function abortAgent(agentId = activeAgentId) {
+    if (!agentId) return;
+    await api.agents.abort(agentId);
+    void refreshRuntimeState(agentId);
+  }
+
   async function exportAgentHtml(agentId: string) {
     const result = await api.agents.exportHtml(agentId);
     setToast(`已导出：${result.path}`);
@@ -359,6 +367,7 @@ export function App() {
           <div className="chat-header-actions">
             <BranchSelector gitInfo={gitInfo} onSwitch={switchBranch} />
             <button disabled={!activeAgentId} onClick={() => activeAgentId && api.agents.prompt({ agentId: activeAgentId, message: "/reload" })}>Reload</button>
+            <button disabled={!activeAgentId || activeAgent?.status !== "running"} onClick={() => abortAgent()}>Stop</button>
             <button disabled={!activeProjectId} onClick={() => createAgent()}>New Agent</button>
             <button className={drawer === "files" ? "active" : ""} onClick={() => { setDrawerCollapsed(false); openDrawer("files"); }}>Files</button>
             <button className={drawer === "sessions" ? "active" : ""} onClick={() => { setDrawerCollapsed(false); openDrawer("sessions"); }}>History</button>
@@ -369,7 +378,8 @@ export function App() {
           {agentLoading && <div className="history-loading"><div className="loader" /><span>{agentLoading.text}</span></div>}
           {!agentLoading && !activeAgent && <EmptyState hasProject={Boolean(activeProjectId)} onCreate={() => createAgent()} />}
           <div className="message-list">
-            {!agentLoading && activeMessages.map(message => <ChatBubble key={message.id} message={message} />)}
+            {!agentLoading && renderedMessages.map(item => item.kind === "tool-group" ? <ToolGroup key={item.id} group={item} /> : <ChatBubble key={item.message.id} message={item.message} />)}
+            {!agentLoading && isAwaitingAssistant && <ThinkingBubble />}
           </div>
           {!agentLoading && outlineItems.length > 1 && <ConversationOutline items={outlineItems} onJump={id => document.querySelector(`[data-message-id="${CSS.escape(id)}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" })} />}
         </section>
@@ -379,7 +389,7 @@ export function App() {
             <ComposerToolbar state={activeRuntimeState} onCycleModel={cycleModel} onPickModel={openModelPicker} onCycleThinking={cycleThinking} />
             <textarea value={prompt} onFocus={() => setSuggestionsOpen(true)} onChange={event => { setPrompt(event.target.value); setSuggestionsOpen(true); }} onKeyDown={handleComposerKeyDown} placeholder={settings.sendShortcut === "enter-send" ? "输入消息，Enter 发送，Ctrl/Shift+Enter 换行。输入 / 或 @ 查看建议。" : "输入消息，按设置的快捷键发送。输入 / 或 @ 查看建议。"} />
             {suggestionsOpen && <PromptSuggestions prompt={prompt} commands={commands} files={flatFiles} onClose={() => { setPrompt(current => clearSuggestionTrigger(current)); setSuggestionsOpen(false); }} onPick={value => { setPrompt(current => applySuggestion(current, value)); setSuggestionsOpen(false); }} />}
-            <div className="composer-footer"><span>{drawer ? "右侧面板可查看文件或恢复历史会话" : activeAgent?.sessionPath ?? ""}</span><button disabled={!activeAgentId || !prompt.trim()} onClick={sendPrompt}>发送</button></div>
+            <div className="composer-footer"><span>{drawer ? "右侧面板可查看文件或恢复历史会话" : activeAgent?.sessionPath ?? ""}</span>{activeAgent?.status === "running" && <button className="stop-send" onClick={() => abortAgent()}>停止</button>}<button disabled={!activeAgentId || !prompt.trim()} onClick={sendPrompt}>发送</button></div>
           </div>
         </footer>
       </main>
@@ -462,6 +472,54 @@ function getHomePathPrefix() {
 
 function EmptyState(props: { hasProject: boolean; onCreate: () => void }) {
   return <div className="empty-state"><div className="empty-logo">π</div><h2>开始一个 pi agent</h2><p>{props.hasProject ? "创建 agent 后即可开始对话。" : "先从左侧添加项目目录。"}</p>{props.hasProject && <button onClick={props.onCreate}>Create Agent</button>}</div>;
+}
+
+type RenderMessage = { kind: "message"; message: ChatMessage } | ToolGroupItem;
+
+type ToolGroupItem = {
+  kind: "tool-group";
+  id: string;
+  messages: ChatMessage[];
+};
+
+function groupToolMessages(messages: ChatMessage[]): RenderMessage[] {
+  const result: RenderMessage[] = [];
+  let current: ChatMessage[] = [];
+
+  function flush() {
+    if (current.length === 0) return;
+    // 同一轮问答里的连续 tool 消息聚合显示，减少工具调用刷屏；详情仍保留在每条 tool 的 meta 里可展开查看。
+    result.push({ kind: "tool-group", id: current.map(message => message.id).join("|"), messages: current });
+    current = [];
+  }
+
+  for (const message of messages) {
+    if (message.role === "tool") current.push(message);
+    else {
+      flush();
+      result.push({ kind: "message", message });
+    }
+  }
+  flush();
+  return result;
+}
+
+function ThinkingBubble() {
+  return <article className="chat-message assistant thinking-message"><div className="msg-avatar">P</div><div className="msg-content"><div className="msg-name"><span>pi</span><time>正在响应</time></div><div className="msg-bubble typing-bubble"><span /> <span /> <span /></div></div></article>;
+}
+
+function ToolGroup(props: { group: ToolGroupItem }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? props.group.messages : props.group.messages.slice(0, 3);
+  const running = props.group.messages.some(message => message.meta?.status === "running");
+  const failed = props.group.messages.some(message => message.meta?.status === "error" || message.meta?.isError === true);
+  return <article className="tool-group" data-message-id={props.group.id}><button className="tool-group-header" onClick={() => setExpanded(value => !value)}><span>{running ? "工具调用中" : failed ? "工具调用有错误" : "工具调用"}</span><strong>{props.group.messages.length} 条</strong><em>{expanded ? "收起" : "展开"}</em></button><div className="tool-group-list">{visible.map(message => <ToolSummary key={message.id} message={message} />)}{!expanded && props.group.messages.length > visible.length && <div className="tool-more">还有 {props.group.messages.length - visible.length} 条工具调用，点击展开查看</div>}</div></article>;
+}
+
+function ToolSummary(props: { message: ChatMessage }) {
+  const [expanded, setExpanded] = useState(false);
+  const detailText = typeof props.message.meta?.detailText === "string" ? props.message.meta.detailText : JSON.stringify(props.message.meta ?? {}, null, 2);
+  return <div className={`tool-summary ${String(props.message.meta?.status ?? "")}`}><div><strong>{props.message.text}</strong><small>{formatTime(props.message.timestamp)}</small></div><button onClick={() => setExpanded(value => !value)}>{expanded ? "收起" : "详情"}</button>{expanded && <pre className="tool-detail">{detailText}</pre>}</div>;
 }
 
 function ChatBubble(props: { message: ChatMessage }) {

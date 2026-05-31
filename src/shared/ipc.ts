@@ -19,6 +19,7 @@ export const ipcChannels = {
   agentsCreate: "agents:create",
   agentsStop: "agents:stop",
   agentsPrompt: "agents:prompt",
+  agentsAbort: "agents:abort",
   agentsExportHtml: "agents:export-html",
   agentsReload: "agents:reload",
   agentsRuntimeState: "agents:runtime-state",

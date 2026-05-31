@@ -112,6 +112,7 @@ function registerIpc() {
   ipcMain.handle(ipcChannels.agentsCreate, (_event, input: CreateAgentInput) => agentManager.create(input));
   ipcMain.handle(ipcChannels.agentsStop, (_event, agentId: string) => agentManager.stop(agentId));
   ipcMain.handle(ipcChannels.agentsPrompt, (_event, input: SendPromptInput) => agentManager.sendPrompt(input));
+  ipcMain.handle(ipcChannels.agentsAbort, (_event, agentId: string) => agentManager.abort(agentId));
   ipcMain.handle(ipcChannels.agentsExportHtml, (_event, agentId: string) => agentManager.exportHtml(agentId));
   ipcMain.handle(ipcChannels.agentsReload, (_event, agentId: string) => agentManager.reload(agentId));
   ipcMain.handle(ipcChannels.agentsRuntimeState, (_event, agentId: string) => agentManager.getRuntimeState(agentId));

@@ -66,6 +66,7 @@ export function createPreviewApi(): PiDesktopApi {
       create: async () => agents[0],
       stop: async () => undefined,
       prompt: async () => undefined,
+      abort: async () => undefined,
       exportHtml: async () => ({ path: "preview.html" }),
       reload: async () => undefined,
       runtimeState: async () => ({ modelName: "Preview GPT", provider: "preview", modelId: "preview", thinkingLevel: "low", contextPercent: 12, contextTokens: 12000, contextWindow: 100000, cacheTotal: 53000000 }),

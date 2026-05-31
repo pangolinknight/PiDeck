@@ -102,6 +102,17 @@ export class AgentManager {
     });
   }
 
+  async abort(agentId: string) {
+    const runtime = this.requireRuntime(agentId);
+    // pi RPC 原生支持 abort，对应终端里的 Escape：停止当前 LLM/tool 流程并保留会话进程。
+    await runtime.process.client.request({ type: "abort" }, 10_000).catch(error => {
+      this.addMessage(agentId, "error", error instanceof Error ? error.message : String(error));
+    });
+    runtime.tab.status = "idle";
+    this.addMessage(agentId, "system", "已请求停止当前响应");
+    this.emitState();
+  }
+
   async getRuntimeState(agentId: string): Promise<AgentRuntimeState> {
     const runtime = this.requireRuntime(agentId);
     const [stateResponse, statsResponse] = await Promise.all([
