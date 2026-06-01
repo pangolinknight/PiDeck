@@ -4,6 +4,12 @@
 
 All notable changes to pi-desktop are documented here.
 
+## v0.1.7 - 2026-06-01
+
+### Improved
+- Reduced the default project list width to leave more room for the conversation area.
+- Refined the project search bar and add button layout so the add button stays visible when the window is narrowed.
+
 ## v0.1.6 - 2026-06-01
 
 ### Improved

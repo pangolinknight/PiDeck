@@ -38,7 +38,7 @@ export function App() {
   const [appInfo, setAppInfo] = useState<AppInfo>({ version: "-", releasesUrl: "https://github.com/ayuayue/pi-desktop/releases" });
   const [piChecking, setPiChecking] = useState(false);
   const [environmentDialog, setEnvironmentDialog] = useState(false);
-  const [listWidth, setListWidth] = useState(300);
+  const [listWidth, setListWidth] = useState(260);
   const [drawerWidth, setDrawerWidth] = useState(360);
   const [composerHeight, setComposerHeight] = useState(132);
   const [listCollapsed, setListCollapsed] = useState(false);
