@@ -4,18 +4,7 @@ const sharp = require('sharp');
 const pngToIcoModule = require('png-to-ico');
 const pngToIco = pngToIcoModule.default ?? pngToIcoModule;
 
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#20d66b"/>
-      <stop offset="1" stop-color="#078b43"/>
-    </linearGradient>
-  </defs>
-  <rect width="1024" height="1024" rx="224" fill="url(#g)"/>
-  <circle cx="784" cy="208" r="80" fill="rgba(255,255,255,.22)"/>
-  <text x="512" y="656" text-anchor="middle" font-family="Arial, sans-serif" font-size="472" font-weight="900" fill="white">π</text>
-  <circle cx="760" cy="760" r="72" fill="white"/>
-</svg>`;
+const svg = fs.readFileSync(path.join(__dirname, '..', 'build', 'icon.svg'), 'utf8');
 
 const out = path.join(__dirname, '..', 'build');
 const iconsDir = path.join(out, 'icons');

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, shell, Tray } from "electron";
 import { join } from "node:path";
 import { is } from "@electron-toolkit/utils";
 import { ipcChannels } from "../shared/ipc";
@@ -12,6 +12,9 @@ import { SettingsStore } from "./settings/SettingsStore";
 import { GitService } from "./git/GitService";
 
 let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+/** 标记是否由用户主动退出（托盘菜单「退出」），区别于窗口关闭隐藏到托盘 */
+let isQuitting = false;
 let projectStore: ProjectStore;
 let fileSystemService: FileSystemService;
 let sessionScanner: SessionScanner;
@@ -19,6 +22,41 @@ let settingsStore: SettingsStore;
 let gitService: GitService;
 let piLocator: PiLocator;
 let agentManager: AgentManager;
+
+function setupTray() {
+	// 跨平台托盘图标：优先用打包后的 icon.png，Electron 会按平台自动适配尺寸
+	const iconPath = join(__dirname, "../../build/icon.png");
+	const icon = nativeImage.createFromPath(iconPath);
+	tray = new Tray(icon.resize({ width: 16, height: 16 }));
+	tray.setToolTip("pi desktop");
+
+	// 双击托盘图标恢复窗口（Windows 常见交互）
+	tray.on("double-click", () => {
+		if (mainWindow) {
+			mainWindow.show();
+			mainWindow.focus();
+		}
+	});
+
+	const contextMenu = Menu.buildFromTemplate([
+		{
+			label: "显示窗口",
+			click: () => {
+				mainWindow?.show();
+				mainWindow?.focus();
+			},
+		},
+		{ type: "separator" },
+		{
+			label: "退出 pi desktop",
+			click: () => {
+				isQuitting = true;
+				app.quit();
+			},
+		},
+	]);
+	tray.setContextMenu(contextMenu);
+}
 
 function createWindow() {
 	const windowOptions = settingsStore.createWindowOptions();
@@ -56,6 +94,14 @@ function createWindow() {
 	});
 
 	mainWindow.once("ready-to-show", () => mainWindow?.show());
+
+	// 关闭窗口时根据设置决定：隐藏到托盘还是正常退出
+	mainWindow.on("close", (event) => {
+		if (!isQuitting && settingsStore.get().closeToTray) {
+			event.preventDefault();
+			mainWindow?.hide();
+		}
+	});
 
 	if (is.dev && process.env.ELECTRON_RENDERER_URL) {
 		mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
@@ -150,6 +196,12 @@ function registerIpc() {
 	ipcMain.handle(ipcChannels.agentsReload, (_event, agentId: string) =>
 		agentManager.reload(agentId),
 	);
+	ipcMain.handle(ipcChannels.agentsRestart, (_event, agentId: string) =>
+		agentManager.restart(agentId),
+	);
+	ipcMain.handle(ipcChannels.agentsCompact, (_event, agentId: string) =>
+		agentManager.compact(agentId),
+	);
 	ipcMain.handle(ipcChannels.agentsRuntimeState, (_event, agentId: string) =>
 		agentManager.getRuntimeState(agentId),
 	);
@@ -192,6 +244,7 @@ app.whenReady().then(async () => {
 	await settingsStore.load();
 	registerIpc();
 	createWindow();
+	setupTray();
 
 	// 项目列表可能位于杀软/同步盘较慢的 userData；窗口先显示，随后异步加载，避免 packaged app 打开时白屏等待。
 	void projectStore
@@ -201,15 +254,27 @@ app.whenReady().then(async () => {
 		)
 		.catch(() => undefined);
 
+	// macOS dock 点击或任务栏点击时恢复窗口
 	app.on("activate", () => {
-		if (BrowserWindow.getAllWindows().length === 0) createWindow();
+		if (mainWindow) {
+			mainWindow.show();
+			mainWindow.focus();
+		} else {
+			createWindow();
+		}
 	});
 });
 
 app.on("before-quit", () => {
+	isQuitting = true;
+	tray?.destroy();
+	tray = null;
 	agentManager?.stopAll();
 });
 
 app.on("window-all-closed", () => {
-	if (process.platform !== "darwin") app.quit();
+	// macOS 关闭所有窗口不退出；其他平台如果启用 closeToTray 也不退出
+	if (process.platform === "darwin") return;
+	if (!isQuitting) return;
+	app.quit();
 });

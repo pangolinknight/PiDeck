@@ -57,8 +57,8 @@ export function createPreviewApi(): PiDesktopApi {
       openExternal: async () => undefined,
     },
     settings: {
-      get: async (): Promise<AppSettings> => ({ useNativeTitleBar: true, showNativeMenu: false, sendShortcut: "enter-send", piEnvironmentChecked: true }),
-      update: async (patch): Promise<AppSettings> => ({ useNativeTitleBar: true, showNativeMenu: false, sendShortcut: "enter-send", piEnvironmentChecked: true, ...patch }),
+      get: async (): Promise<AppSettings> => ({ useNativeTitleBar: true, showNativeMenu: false, sendShortcut: "enter-send", piEnvironmentChecked: true, closeToTray: true }),
+      update: async (patch): Promise<AppSettings> => ({ useNativeTitleBar: true, showNativeMenu: false, sendShortcut: "enter-send", piEnvironmentChecked: true, closeToTray: true, ...patch }),
       onApplyWindow: noop,
     },
     agents: {
@@ -69,6 +69,8 @@ export function createPreviewApi(): PiDesktopApi {
       abort: async () => undefined,
       exportHtml: async () => ({ path: "preview.html" }),
       reload: async () => undefined,
+      restart: async (agentId: string) => ({ id: agentId, projectId: "preview", cwd: "/preview", title: "Preview Agent", status: "idle" as const, createdAt: Date.now() }),
+      compact: async () => ({ modelName: "Preview GPT", provider: "preview", modelId: "preview", thinkingLevel: "low", contextPercent: 5, contextTokens: 5000, contextWindow: 100000, cacheTotal: 53000000 }),
       runtimeState: async () => ({ modelName: "Preview GPT", provider: "preview", modelId: "preview", thinkingLevel: "low", contextPercent: 12, contextTokens: 12000, contextWindow: 100000, cacheTotal: 53000000 }),
       cycleModel: async () => ({ modelName: "Preview GPT", thinkingLevel: "low" }),
       availableModels: async () => [{ id: "preview", name: "Preview GPT", provider: "preview" }],

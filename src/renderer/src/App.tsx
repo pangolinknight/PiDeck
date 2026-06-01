@@ -70,6 +70,7 @@ export function App() {
 		agent: AgentTab;
 	} | null>(null);
 	const [toast, setToast] = useState<string | null>(null);
+	const [compacting, setCompacting] = useState(false);
 	const [drawer, setDrawer] = useState<DrawerPanel | null>(null);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [agentLoading, setAgentLoading] = useState<{ text: string } | null>(
@@ -80,6 +81,7 @@ export function App() {
 		showNativeMenu: false,
 		sendShortcut: "enter-send",
 		piEnvironmentChecked: false,
+		closeToTray: true,
 	});
 	const [settingsNotice, setSettingsNotice] = useState("");
 	const [piStatus, setPiStatus] = useState<PiInstallStatus | null>(null);
@@ -304,11 +306,12 @@ export function App() {
 		setAgentLoading({
 			text: sessionPath ? "正在打开历史会话…" : "正在创建 Agent…",
 		});
+		// 立即关闭抽屉，避免等待 agent 加载期间列表仍然显示
+		setDrawer(null);
 		try {
 			const tab = await api.agents.create({ projectId, sessionPath, title });
 			setActiveAgentId(tab.id);
 			void refreshRuntimeState(tab.id);
-			setDrawer(null);
 		} finally {
 			setAgentLoading(null);
 		}
@@ -358,6 +361,20 @@ export function App() {
 			...current,
 			[activeAgentId]: state,
 		}));
+	}
+
+	async function compactAgent() {
+		if (!activeAgentId) return;
+		setCompacting(true);
+		try {
+			const state = await api.agents.compact(activeAgentId);
+			setRuntimeStateByAgent((current) => ({
+				...current,
+				[activeAgentId]: state,
+			}));
+		} finally {
+			setCompacting(false);
+		}
 	}
 
 	async function closeAgent(agentId: string) {
@@ -694,58 +711,79 @@ export function App() {
 						</span>
 						<SessionStatus state={activeRuntimeState} />
 					</div>
-					<div className="chat-header-actions">
-						<div className="header-action-group branch-group">
-							<BranchSelector gitInfo={gitInfo} onSwitch={switchBranch} />
-						</div>
-						<div className="header-action-group session-group">
-							<button
-								className="primary-action"
-								disabled={!activeProjectId}
-								onClick={() => createAgent()}
-								title="Start a new pi session"
-							>
-								New Session
-							</button>
-							<button
-								disabled={!activeAgentId || activeAgent?.status !== "running"}
-								onClick={() => abortAgent()}
-							>
-								Stop
-							</button>
-							<button
-								disabled={!activeAgentId}
-								onClick={() =>
-									activeAgentId &&
-									api.agents.prompt({
-										agentId: activeAgentId,
-										message: "/reload",
-									})
-								}
-							>
-								Reload
-							</button>
-						</div>
-						<div className="header-action-group panel-group">
-							<button
-								className={drawer === "files" ? "active" : ""}
-								onClick={() => {
-									setDrawerCollapsed(false);
-									openDrawer("files");
-								}}
-							>
-								Files
-							</button>
-							<button
-								className={drawer === "sessions" ? "active" : ""}
-								onClick={() => {
-									setDrawerCollapsed(false);
-									openDrawer("sessions");
-								}}
-							>
-								History
-							</button>
-						</div>
+					<div className={`chat-header-actions${agentLoading ? " loading" : ""}`}>
+						{!agentLoading && (
+							<>
+								<div className="header-action-group branch-group">
+									<BranchSelector gitInfo={gitInfo} onSwitch={switchBranch} />
+								</div>
+								<div className="header-action-group session-group">
+									<button
+										className="primary-action"
+										disabled={!activeProjectId}
+										onClick={() => createAgent()}
+										title="Start a new pi session"
+									>
+										New Session
+									</button>
+									<button
+										disabled={!activeAgentId || activeAgent?.status !== "running"}
+										onClick={() => abortAgent()}
+									>
+										Stop
+									</button>
+									<button
+										disabled={!activeAgentId}
+										onClick={() =>
+											activeAgentId &&
+											api.agents.prompt({
+												agentId: activeAgentId,
+												message: "/reload",
+											})
+										}
+									>
+										Reload
+									</button>
+									<button
+										disabled={!activeAgentId || !!agentLoading}
+										title="重启 Agent 进程，重新加载配置文件（provider、API key 等）"
+										onClick={async () => {
+											if (!activeAgentId) return;
+											setAgentLoading({ text: "正在重启 Agent…" });
+											try {
+												const tab = await api.agents.restart(activeAgentId);
+												setActiveAgentId(tab.id);
+												void refreshRuntimeState(tab.id);
+											} finally {
+												setAgentLoading(null);
+											}
+										}}
+									>
+										Restart
+									</button>
+								</div>
+								<div className="header-action-group panel-group">
+									<button
+										className={drawer === "files" ? "active" : ""}
+										onClick={() => {
+											setDrawerCollapsed(false);
+											openDrawer("files");
+										}}
+									>
+										Files
+									</button>
+									<button
+										className={drawer === "sessions" ? "active" : ""}
+										onClick={() => {
+											setDrawerCollapsed(false);
+											openDrawer("sessions");
+										}}
+									>
+										History
+									</button>
+								</div>
+							</>
+						)}
 					</div>
 				</header>
 
@@ -762,17 +800,18 @@ export function App() {
 							onCreate={() => createAgent()}
 						/>
 					)}
-					<div className="message-list">
-						{!agentLoading &&
-							renderedMessages.map((item) =>
+					{!agentLoading && activeAgent && (
+						<div className="message-list">
+							{renderedMessages.map((item) =>
 								item.kind === "tool-group" ? (
 									<ToolGroup key={item.id} group={item} />
 								) : (
 									<ChatBubble key={item.message.id} message={item.message} />
 								),
 							)}
-						{!agentLoading && isAwaitingAssistant && <ThinkingBubble />}
-					</div>
+							{isAwaitingAssistant && <ThinkingBubble />}
+						</div>
+					)}
 					{!agentLoading && outlineItems.length > 1 && (
 						<ConversationOutline
 							items={outlineItems}
@@ -785,6 +824,7 @@ export function App() {
 					)}
 				</section>
 
+				{!agentLoading && (
 				<footer className="composer">
 					<div className="composer-box" style={{ height: composerHeight }}>
 						<div
@@ -794,9 +834,11 @@ export function App() {
 						/>
 						<ComposerToolbar
 							state={activeRuntimeState}
+							compacting={compacting}
 							onCycleModel={cycleModel}
 							onPickModel={openModelPicker}
 							onCycleThinking={cycleThinking}
+							onCompact={compactAgent}
 						/>
 						<textarea
 							value={prompt}
@@ -847,6 +889,7 @@ export function App() {
 						</div>
 					</div>
 				</footer>
+				)}
 			</main>
 
 			{drawer && !drawerCollapsed && (
@@ -1073,10 +1116,14 @@ function SessionStatus(props: { state?: AgentRuntimeState }) {
 
 function ComposerToolbar(props: {
 	state?: AgentRuntimeState;
+	compacting: boolean;
 	onCycleModel: () => void;
 	onPickModel: () => void;
 	onCycleThinking: () => void;
+	onCompact: () => void;
 }) {
+	const ctxPercent = props.state?.contextPercent;
+	const showCompact = ctxPercent != null && ctxPercent > 30;
 	return (
 		<div className="composer-toolbar">
 			<button onClick={props.onPickModel}>
@@ -1086,6 +1133,18 @@ function ComposerToolbar(props: {
 			<button onClick={props.onCycleThinking}>
 				Think: {props.state?.thinkingLevel ?? "-"}
 			</button>
+			{showCompact && (
+				<button
+					className={props.state?.isCompacting || props.compacting ? "compacting" : ""}
+					disabled={props.state?.isCompacting || props.compacting || !!props.state?.isStreaming}
+					title={
+						`上下文: ${ctxPercent.toFixed(1)}% — 点击压缩上下文释放空间`
+					}
+					onClick={props.onCompact}
+				>
+					{props.state?.isCompacting || props.compacting ? "压缩中…" : `Compact ${ctxPercent.toFixed(0)}%`}
+				</button>
+			)}
 		</div>
 	);
 }
@@ -1134,29 +1193,73 @@ function BranchSelector(props: {
 	gitInfo: GitBranchInfo;
 	onSwitch: (branch: string) => void;
 }) {
+	const [open, setOpen] = useState(false);
+	const ref = useRef<HTMLDivElement>(null);
+
+	// 点击外部区域自动关闭下拉
+	useEffect(() => {
+		if (!open) return;
+		const handler = (event: MouseEvent) => {
+			if (ref.current && !ref.current.contains(event.target as Node)) {
+				setOpen(false);
+			}
+		};
+		document.addEventListener("mousedown", handler);
+		return () => document.removeEventListener("mousedown", handler);
+	}, [open]);
+
 	if (props.gitInfo.branches.length === 0) return null;
+	const current = props.gitInfo.current ?? "";
+
 	return (
-		<label className="branch-select">
-			<span className="branch-icon">⑂</span>
-			<select
-				value={props.gitInfo.current ?? ""}
-				onChange={(event) => props.onSwitch(event.target.value)}
+		<div className="branch-select" ref={ref}>
+			<button
+				className="branch-trigger"
+				onClick={() => setOpen((v) => !v)}
+				title={`当前分支: ${current}`}
 			>
-				{props.gitInfo.branches.map((branch) => (
-					<option key={branch} value={branch}>
-						{branch}
-					</option>
-				))}
-			</select>
-		</label>
+				<span className="branch-icon">⑂</span>
+				<span className="branch-label" title={current}>
+					{current}
+				</span>
+				<span className={`branch-chevron${open ? " open" : ""}`}>▾</span>
+			</button>
+			{open && (
+				<div className="branch-dropdown">
+					{props.gitInfo.branches.map((branch) => (
+						<button
+							key={branch}
+							className={branch === current ? "active" : ""}
+							onClick={() => {
+								props.onSwitch(branch);
+								setOpen(false);
+							}}
+						>
+							<span className="branch-item-icon">
+								{branch === current ? "✓" : "⑂"}
+							</span>
+							<span className="branch-item-label" title={branch}>
+								{branch}
+							</span>
+						</button>
+					))}
+				</div>
+			)}
+		</div>
 	);
 }
 
 function LogoMark() {
 	return (
 		<div className="logo-mark" aria-label="pi desktop logo">
-			<span>π</span>
-			<i />
+			<svg viewBox="140 140 520 520" width="22" height="22" aria-hidden="true">
+				<path
+					fill="#fff"
+					fillRule="evenodd"
+					d="M165.29 165.29H517.36V400H400V517.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z"
+				/>
+				<path fill="#fff" d="M517.36 400H634.72V634.72H517.36Z" />
+			</svg>
 		</div>
 	);
 }
@@ -1178,7 +1281,14 @@ function ProjectAvatar(props: { name: string }) {
 function AgentAvatar(props: { status: string }) {
 	return (
 		<div className={`conversation-avatar agent-avatar ${props.status}`}>
-			<span>π</span>
+			<svg viewBox="140 140 520 520" width="28" height="28" aria-hidden="true">
+				<path
+					fill="#fff"
+					fillRule="evenodd"
+					d="M165.29 165.29H517.36V400H400V517.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z"
+				/>
+				<path fill="#fff" d="M517.36 400H634.72V634.72H517.36Z" />
+			</svg>
 		</div>
 	);
 }
@@ -1210,7 +1320,16 @@ function getHomePathPrefix() {
 function EmptyState(props: { hasProject: boolean; onCreate: () => void }) {
 	return (
 		<div className="empty-state">
-			<div className="empty-logo">π</div>
+			<div className="empty-logo">
+				<svg viewBox="140 140 520 520" width="40" height="40" aria-hidden="true">
+					<path
+						fill="#fff"
+						fillRule="evenodd"
+						d="M165.29 165.29H517.36V400H400V517.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z"
+					/>
+					<path fill="#fff" d="M517.36 400H634.72V634.72H517.36Z" />
+				</svg>
+			</div>
 			<h2>开始一个 pi agent</h2>
 			<p>
 				{props.hasProject
@@ -1819,6 +1938,16 @@ function SettingsModal(props: {
 							}
 						/>{" "}
 						显示原生菜单
+					</label>
+					<label>
+						<input
+							type="checkbox"
+							checked={props.settings.closeToTray}
+							onChange={(event) =>
+								props.onChange({ closeToTray: event.target.checked })
+							}
+						/>{" "}
+						关闭窗口时隐藏到系统托盘
 					</label>
 					<div className="setting-field">
 						<span>发送快捷键</span>

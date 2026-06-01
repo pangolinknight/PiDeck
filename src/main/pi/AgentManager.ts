@@ -113,6 +113,17 @@ export class AgentManager {
     this.emitState();
   }
 
+  /**
+   * 手动触发上下文压缩。pi 会将历史消息摘要化以释放 context 空间，
+   * 适用于长时间对话后 context 占比过高、但不想丢失关键信息的场景。
+   */
+  async compact(agentId: string) {
+    const runtime = this.requireRuntime(agentId);
+    await runtime.process.client.request({ type: "compact" }, 120_000);
+    await this.loadMessages(agentId).catch(() => undefined);
+    return this.getRuntimeState(agentId);
+  }
+
   async getRuntimeState(agentId: string): Promise<AgentRuntimeState> {
     const runtime = this.requireRuntime(agentId);
     const [stateResponse, statsResponse] = await Promise.all([
@@ -175,6 +186,25 @@ export class AgentManager {
     // RPC 没有专门的 reload command；pi 文档说明 extension/斜线命令应通过 prompt 入口执行。
     await runtime.process.client.request({ type: "prompt", message: "/reload" }, 60_000);
     await this.loadMessages(agentId).catch(() => undefined);
+  }
+
+  /**
+   * 重启 agent 进程：停止当前 pi RPC 子进程，用同一个 session 重新启动。
+   * 适用场景：修改了 provider 配置、切换了 API key、更新了 pi 版本后，
+   * /reload 只重载 extension，不会重新读取配置文件，restart 才能生效。
+   */
+  async restart(agentId: string): Promise<AgentTab> {
+    const runtime = this.requireRuntime(agentId);
+    const { projectId, sessionPath, title } = runtime.tab;
+
+    // 停止旧进程并清理状态
+    runtime.process.stop();
+    this.agents.delete(agentId);
+    this.messages.delete(agentId);
+    this.emitState();
+
+    // 用相同的 session 重新创建 agent，新进程会重新加载所有配置
+    return this.create({ projectId, sessionPath, title });
   }
 
   async exportHtml(agentId: string) {

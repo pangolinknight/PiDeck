@@ -4,6 +4,22 @@
 
 All notable changes to pi-desktop are documented here.
 
+## v0.1.9 - 2026-06-01
+
+### Added
+- System tray support: closing the window now hides to the system tray by default; added a "close to tray" toggle in settings.
+- Tray context menu with "Show Window" and "Exit" actions; double-click tray icon to restore (Windows).
+- Restart button for agents: stops the pi RPC process and re-spawns with the same session, picking up new provider/API key configuration changes that `/reload` cannot apply.
+- Manual context compaction button in the composer toolbar, visible when context usage exceeds 30%; shows live percentage and loading state.
+- Custom branch dropdown replacing the native `<select>`, with hover highlights, active branch indicator, and open/close animation.
+
+### Improved
+- Refined chat header layout: tighter spacing, gradient "New Session" button, polished action group styling with transitions.
+- Branch selector, session actions, and composer are hidden during agent loading to avoid showing stale UI.
+- History drawer closes immediately when clicking a session instead of waiting for agent creation to finish.
+- Switched to official pi wordmark logo from pi.dev for app icon, sidebar, agent avatars, boot screen, and empty state.
+- Context compaction button uses yellow highlight during compaction and is disabled while streaming.
+
 ## v0.1.8 - 2026-06-01
 
 ### Improved

@@ -8,6 +8,7 @@ const defaultSettings: AppSettings = {
   showNativeMenu: false,
   sendShortcut: "enter-send",
   piEnvironmentChecked: false,
+  closeToTray: true,
 };
 
 export class SettingsStore {

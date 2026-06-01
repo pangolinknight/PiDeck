@@ -85,6 +85,8 @@ export type AppSettings = {
   showNativeMenu: boolean;
   sendShortcut: SendShortcutMode;
   piEnvironmentChecked: boolean;
+  /** 关闭窗口时隐藏到系统托盘而不是退出 */
+  closeToTray: boolean;
 };
 
 export type PiInstallStatus = {

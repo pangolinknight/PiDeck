@@ -22,6 +22,8 @@ export const ipcChannels = {
   agentsAbort: "agents:abort",
   agentsExportHtml: "agents:export-html",
   agentsReload: "agents:reload",
+  agentsRestart: "agents:restart",
+  agentsCompact: "agents:compact",
   agentsRuntimeState: "agents:runtime-state",
   agentsCycleModel: "agents:cycle-model",
   agentsAvailableModels: "agents:available-models",
