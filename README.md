@@ -1,101 +1,101 @@
 # pi-desktop
 
-[中文文档](README.zh-CN.md) · [LinuxDO 友链](https://linux.do)
+[English](README.en.md) · [LinuxDO 友链](https://linux.do)
 
-**A desktop workbench for managing multiple [pi](https://pi.dev) coding-agent sessions across project folders.**
+**一个用于管理多个 [pi](https://pi.dev) 编码 Agent 会话的桌面工作台。**
 
 ![Status](https://img.shields.io/badge/status-experimental-orange)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Electron](https://img.shields.io/badge/Electron-38-47848f)
 ![React](https://img.shields.io/badge/React-19-61dafb)
-![Version](https://img.shields.io/badge/version-0.3.0-green)
+![Version](https://img.shields.io/badge/version-0.4.0-green)
 
-`pi-desktop` is **not** a fork of pi. It is a lightweight Electron shell that orchestrates multiple `pi --mode rpc` processes, providing a native desktop UI for projects, sessions, conversations, configuration, and tool orchestration — all powered by pi's native agent capabilities.
+`pi-desktop` **不是** pi 的分支。它是一个轻量 Electron 外壳，通过启动多个 `pi --mode rpc` 进程，将项目管理、会话管理、对话界面、配置管理和工具编排整合到一个原生桌面应用中——所有 Agent 能力由 pi 原生提供。
 
 ---
 
-## Key Features
+## 核心功能
 
-| Feature | Description |
+| 功能 | 说明 |
 |---|---|
-| **Multi-Project Workspace** | Add, search, and switch between local project folders. Run multiple pi agents simultaneously with per-project isolation. |
-| **Configuration Management** | Visual editors for pi's `models.json`, `auth.json`, and `settings.json` — manage providers, API keys, and model settings without touching JSON files manually. |
-| **Slash Commands & `!` Shell** | Built-in slash command suggestions (`/reload`, `/compact`, `/session`, …) and `!command` / `!!command` for inline shell execution directly in the chat composer. |
-| **Session Management** | Create new sessions, restore historical ones, rename sessions inline, export to HTML, and close agents — all from the sidebar or context menu. |
-| **Git Integration** | Real-time branch display with local + remote branch selector, branch count badge, and switching support. |
-| **Tool Call Visualization** | Grouped tool-call cards with summary and expandable details, clear status indicators for running/completed/failed calls. |
-| **Context-Aware Input** | `@` file suggestions from project tree, `!` shell execution, `/` slash commands — all from a single composer. |
-| **System Tray** | Close to tray by default, tray context menu, double-click to restore. |
+| **多项目工作区** | 添加、搜索和切换本地项目目录，同时运行多个 pi Agent，项目间完全隔离。 |
+| **配置管理** | 可视化编辑器管理 pi 的 `models.json`、`auth.json`、`settings.json`——无需手动编辑 JSON 文件即可管理 Provider、API Key 和模型配置。 |
+| **斜线命令 & `!` Shell** | 内置斜线命令建议（`/reload`、`/compact`、`/session` 等），支持 `!command` / `!!command` 在聊天输入框直接执行 Shell 命令。 |
+| **会话管理** | 新建会话、恢复历史会话、内联重命名、导出 HTML、关闭 Agent——通过侧边栏或右键菜单即可完成。 |
+| **Git 集成** | 实时显示当前分支，支持本地 + 远程分支选择器、分支数量徽章和分支切换。 |
+| **工具调用可视化** | 工具调用聚合卡片，摘要 + 可展开详情，运行中/完成/失败状态清晰标识。 |
+| **上下文感知输入** | `@` 文件引用建议、`!` Shell 执行、`/` 斜线命令——统一在同一个输入框中。 |
+| **系统托盘** | 关闭窗口默认最小化到托盘，托盘右键菜单，双击恢复窗口。 |
 
 ---
 
-## Screenshots
+## 截图
 
-### Workspace & Conversation
+### 工作区与对话界面
 
-![Workspace overview](docs/images/overview.png)
+![工作区总览](docs/images/overview.png)
 
-Markdown rendering with streaming text, tool-call details, model/thinking/context/cache status bar, git branch selector, and action controls (New Session · Stop · Reload · Restart).
+Markdown 渲染 + 流式输出、工具调用详情、模型/思考等级/上下文/缓存状态栏、Git 分支选择器、操作按钮（New Session · Stop · Reload · Restart）。
 
-### Configuration Management
+### 配置管理
 
-![Configuration management](docs/images/config.png)
+![配置管理](docs/images/config.png)
 
-Visual editors for Models (provider cards + model grid), Auth (API key management), Settings (type-aware key-value), and raw JSON source file editing — with save-and-reload to hot-apply changes to running agents.
+可视化编辑器：Models（Provider 卡片 + 模型网格）、Auth（API Key 管理）、Settings（类型感知的键值编辑器）、源文件（原始 JSON 编辑）——保存后自动重载，热生效到运行中的 Agent。
 
-### Slash Commands & Session History
+### 斜线命令与会话历史
 
-![Slash commands and session history](docs/images/slash-commands.png)
+![斜线命令及会话历史](docs/images/slash-commands.png)
 
-Built-in slash command suggestions panel with descriptions, alongside the session history drawer for browsing and restoring past conversations.
+内置斜线命令建议面板（带功能说明），配合右侧历史会话抽屉，快速浏览和恢复过往对话。
 
-### File Tree & Session Actions
+### 文件树与会话操作
 
-![File tree and session actions](docs/images/files.png)
+![文件树及会话操作](docs/images/files.png)
 
-Project file tree with Git status indicators, `@` file reference suggestions in the composer, and session context menu (Open · Export HTML · Close Agent).
+项目文件树（含 Git 状态标识）、输入框 `@` 文件引用建议、会话右键菜单（打开会话 · 导出 HTML · 关闭 Agent）。
 
 ---
 
-## Architecture
+## 架构设计
 
 ```txt
 pi-desktop
-├─ Electron Main Process
-│  ├─ Project record management
-│  ├─ Spawns pi --mode rpc processes
-│  ├─ Bridges file / session / git operations
-│  └─ Exposes safe IPC APIs
+├─ Electron 主进程
+│  ├─ 管理项目记录
+│  ├─ 启动 pi --mode rpc 进程
+│  ├─ 桥接文件、会话、Git 操作
+│  └─ 暴露安全 IPC API
 │
 ├─ Electron Preload
-│  └─ Exposes window.piDesktop to renderer
+│  └─ 向 Renderer 暴露 window.piDesktop
 │
 ├─ React Renderer
-│  ├─ Project & agent list
-│  ├─ Chat timeline with streaming
-│  ├─ File / history drawers
-│  ├─ Configuration modal (Models / Auth / Settings / Source)
-│  ├─ Model & context status bar
-│  └─ Settings UI
+│  ├─ 项目和 Agent 列表
+│  ├─ 聊天时间线（流式输出）
+│  ├─ 文件 / 历史抽屉
+│  ├─ 配置管理弹窗（Models / Auth / Settings / 源文件）
+│  ├─ 模型与上下文状态栏
+│  └─ 设置 UI
 │
-└─ Pi Runtime
-   ├─ One pi RPC process per agent tab
-   ├─ Per-project cwd isolation
-   └─ Native pi sessions / tools / models / context
+└─ Pi 运行时
+   ├─ 每个 Agent Tab 一个独立 pi RPC 进程
+   ├─ 项目级 cwd 隔离
+   └─ 使用 pi 原生会话 / 工具 / 模型 / 上下文
 ```
 
-Core design principle: **one agent tab = one pi RPC process**, keeping sessions isolated and letting pi own its native behavior.
+核心设计原则：**一个 Agent Tab = 一个 pi RPC 进程**，确保会话隔离，让 pi 继续负责其原生能力。
 
 ---
 
-## Requirements
+## 环境要求
 
 - Node.js 20+
 - npm
-- `pi` command available in system `PATH`
-- pi authentication configured (via `pi` / `/login` or API keys)
+- 系统 `PATH` 中可访问 `pi` 命令
+- 已完成 pi 的 Provider / 登录 / API Key 配置
 
-Verify pi is available:
+验证 pi 是否可用：
 
 ```bash
 pi --version
@@ -104,17 +104,17 @@ pi --mode rpc
 
 ---
 
-## Download
+## 下载安装
 
-Prebuilt packages for **Windows**, **macOS**, and **Linux** are published from tagged releases:
+**Windows**、**macOS**、**Linux** 平台的预构建安装包在 GitHub Release 中发布：
 
 👉 **[GitHub Releases](https://github.com/ayuayue/pi-desktop/releases)**
 
-> pi-desktop requires the `pi` CLI to be installed separately and available in your system `PATH`.
+> pi-desktop 需要单独安装 `pi` CLI 并确保其加入系统 `PATH`。
 
 ---
 
-## Quick Start (from Source)
+## 快速开始（从源码运行）
 
 ```bash
 git clone https://github.com/ayuayue/pi-desktop.git
@@ -126,64 +126,64 @@ npm run dev
 
 ---
 
-## Development
+## 开发命令
 
-| Command | Description |
+| 命令 | 说明 |
 |---|---|
-| `npm run dev` | Start dev mode |
-| `npm run typecheck` | Run TypeScript type checking |
-| `npm run build` | Build renderer + main bundles |
-| `npm run dist` | Package for current platform |
-| `npm run dist:win` | Package for Windows (NSIS + portable + zip) |
-| `npm run dist:mac` | Package for macOS (DMG + zip) |
-| `npm run dist:linux` | Package for Linux (AppImage + deb + tar.gz) |
-| `npm run make-icon` | Generate icon assets to `build/icon.svg` |
+| `npm run dev` | 启动开发模式 |
+| `npm run typecheck` | 运行 TypeScript 类型检查 |
+| `npm run build` | 构建 Renderer + Main 产物 |
+| `npm run dist` | 为当前平台打包 |
+| `npm run dist:win` | 打包 Windows（NSIS + portable + zip） |
+| `npm run dist:mac` | 打包 macOS（DMG + zip） |
+| `npm run dist:linux` | 打包 Linux（AppImage + deb + tar.gz） |
+| `npm run make-icon` | 生成图标资源到 `build/icon.svg` |
 
-### Browser Preview Mode
+### 浏览器预览模式
 
-Open `http://localhost:5173/` directly in a browser for layout and responsive checks. The renderer falls back to mock data when `window.piDesktop` is unavailable — useful for CSS/UI work without Electron. Real IPC features (agents, sessions, file ops) require the Electron app.
+直接打开 `http://localhost:5173/` 进行布局和响应式调试。Renderer 在 `window.piDesktop` 不可用时自动降级为 mock 数据，无需 Electron 环境。但涉及 Agent、会话、文件操作等真实 IPC 功能仍需在 Electron 中验证。
 
 ---
 
-## Project Structure
+## 项目结构
 
 ```txt
 src/
 ├─ main/
-│  ├─ fs/                 # File tree service
-│  ├─ git/                # Git branch service
-│  ├─ pi/                 # Pi process & RPC manager
-│  ├─ projects/           # Project persistence
-│  ├─ sessions/           # Pi session scanning
-│  ├─ settings/           # App settings persistence
-│  └─ index.ts            # Electron main entry
+│  ├─ fs/                 # 文件树服务
+│  ├─ git/                # Git 分支服务
+│  ├─ pi/                 # Pi 进程与 RPC 管理
+│  ├─ projects/           # 项目记录持久化
+│  ├─ sessions/           # Pi 会话扫描
+│  ├─ settings/           # 应用设置持久化
+│  └─ index.ts            # Electron 主入口
 │
 ├─ preload/
-│  └─ index.ts            # Safe IPC bridge
+│  └─ index.ts            # 安全 IPC 桥接
 │
 ├─ renderer/
 │  └─ src/
-│     ├─ App.tsx          # Main UI
-│     ├─ previewApi.ts    # Browser preview fallback
-│     ├─ styles.css       # App styling
-│     └─ main.tsx         # React entry
+│     ├─ App.tsx          # 主界面
+│     ├─ previewApi.ts    # 浏览器预览降级
+│     ├─ styles.css       # 应用样式
+│     └─ main.tsx         # React 入口
 │
 └─ shared/
-   ├─ ipc.ts              # IPC channel names
-   └─ types.ts            # Shared DTOs
+   ├─ ipc.ts              # IPC 通道名称
+   └─ types.ts            # 共享类型定义
 ```
 
 ---
 
-## Release Notes
+## 更新日志
 
-See [CHANGELOG.md](CHANGELOG.md) (English) or [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md) (Chinese) for detailed version history.
+详细版本历史请查看 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)（中文）或 [CHANGELOG.md](CHANGELOG.md)（英文）。
 
 ---
 
-## Security
+## 安全说明
 
-This app starts local `pi` processes and exposes limited file operations through Electron IPC. Only run from trusted source code. The app sends no telemetry and uploads no files — all model/provider network behavior is handled by pi and your configured providers.
+本应用启动本地 `pi` 进程并通过 Electron IPC 暴露有限的文件操作。请仅运行你信任的源码。应用不发送遥测数据，不上传文件——所有模型和 Provider 的网络行为由 pi 及其配置决定。
 
 ## License
 

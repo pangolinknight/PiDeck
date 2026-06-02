@@ -27,10 +27,10 @@ jobs:
           echo "Extracting changelog for v${VERSION}..."
           
           # 提取该版本的 changelog 内容（从版本标题到下一个版本标题之间）
-          # 先尝试英文 CHANGELOG，失败则用中文
-          BODY=$(awk -v ver="v${VERSION}" '/^## v[0-9]/{if(found) exit; if($2==ver) found=1; next} found{print}' CHANGELOG.md)
+          # 优先使用中文 CHANGELOG
+          BODY=$(awk -v ver="v${VERSION}" '/^## v[0-9]/{if(found) exit; if($2==ver) found=1; next} found{print}' CHANGELOG.zh-CN.md)
           if [ -z "$BODY" ]; then
-            BODY=$(awk -v ver="v${VERSION}" '/^## v[0-9]/{if(found) exit; if($2==ver) found=1; next} found{print}' CHANGELOG.zh-CN.md)
+            BODY=$(awk -v ver="v${VERSION}" '/^## v[0-9]/{if(found) exit; if($2==ver) found=1; next} found{print}' CHANGELOG.md)
           fi
           
           if [ -z "$BODY" ]; then
