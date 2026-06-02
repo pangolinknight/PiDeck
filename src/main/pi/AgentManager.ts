@@ -1,4 +1,4 @@
-import type { BrowserWindow } from "electron";
+import { app, BrowserWindow, Notification } from "electron";
 import { randomUUID } from "node:crypto";
 import type {
 	AgentRuntimeState,
@@ -11,6 +11,7 @@ import type {
 } from "../../shared/types";
 import { ipcChannels } from "../../shared/ipc";
 import { PiProcess } from "./PiProcess";
+import type { SettingsStore } from "../settings/SettingsStore";
 
 export class AgentManager {
 	private readonly agents = new Map<string, AgentRuntime>();
@@ -19,6 +20,7 @@ export class AgentManager {
 	constructor(
 		private readonly getProject: (id: string) => Project | undefined,
 		private readonly getWindow: () => BrowserWindow | null,
+		private readonly settingsStore: SettingsStore,
 	) {}
 
 	list() {
@@ -411,6 +413,8 @@ export class AgentManager {
 		if (typed.type === "agent_end" && runtime) {
 			runtime.tab.status = "idle";
 			this.emitState();
+			// 会话结束时发送系统通知，让用户知道 agent 已完成工作
+			this.notifySessionEnd(runtime.tab.title);
 		}
 
 		if (
@@ -585,8 +589,12 @@ export class AgentManager {
 			return content
 				.map((item) => {
 					if (typeof item === "string") return item;
-					if (item && typeof item === "object")
-						return String((item as any).text ?? (item as any).thinking ?? "");
+					if (item && typeof item === "object") {
+						const typed = item as any;
+						// 跳过 thinking 类型的内容，只提取实际文本回复
+						if (typed.type === "thinking") return "";
+						return String(typed.text ?? "");
+					}
 					return "";
 				})
 				.filter(Boolean)
@@ -598,6 +606,30 @@ export class AgentManager {
 		const runtime = this.agents.get(agentId);
 		if (!runtime) throw new Error(`Agent not found: ${agentId}`);
 		return runtime;
+	}
+
+	/**
+	 * 会话结束时发送系统通知。
+	 * 仅在设置中启用通知且 Electron Notification 可用时触发，
+	 * 通知用户 agent 已完成响应，可以查看结果或继续对话。
+	 */
+	private notifySessionEnd(sessionTitle: string) {
+		try {
+			const settings = this.settingsStore.get();
+			if (!settings.enableNotifications) return;
+			if (!Notification.isSupported()) return;
+
+			// 使用应用名称作为通知标题，在 Windows/macOS 通知中心中显示为应用标识
+			const appName = app.getName();
+			const notification = new Notification({
+				title: appName,
+				body: `${sessionTitle} 已完成响应`,
+				silent: false,
+			});
+			notification.show();
+		} catch {
+			// 通知失败不影响主流程，静默处理
+		}
 	}
 
 	private emitState() {

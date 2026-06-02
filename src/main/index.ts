@@ -278,6 +278,7 @@ app.whenReady().then(async () => {
 	agentManager = new AgentManager(
 		(id) => projectStore.get(id),
 		() => mainWindow,
+		settingsStore,
 	);
 
 	await settingsStore.load();

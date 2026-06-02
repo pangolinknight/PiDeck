@@ -138,6 +138,7 @@ export function createPreviewApi(): PiDesktopApi {
 				sendShortcut: "enter-send",
 				piEnvironmentChecked: true,
 				closeToTray: true,
+				enableNotifications: true,
 			}),
 			update: async (patch): Promise<AppSettings> => ({
 				useNativeTitleBar: true,
@@ -145,6 +146,7 @@ export function createPreviewApi(): PiDesktopApi {
 				sendShortcut: "enter-send",
 				piEnvironmentChecked: true,
 				closeToTray: true,
+				enableNotifications: true,
 				...patch,
 			}),
 			onApplyWindow: noop,

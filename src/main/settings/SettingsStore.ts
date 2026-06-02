@@ -9,6 +9,7 @@ const defaultSettings: AppSettings = {
   sendShortcut: "enter-send",
   piEnvironmentChecked: false,
   closeToTray: true,
+  enableNotifications: true,
 };
 
 export class SettingsStore {

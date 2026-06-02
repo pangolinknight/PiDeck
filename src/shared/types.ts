@@ -87,6 +87,8 @@ export type AppSettings = {
   piEnvironmentChecked: boolean;
   /** 关闭窗口时隐藏到系统托盘而不是退出 */
   closeToTray: boolean;
+  /** 会话结束时发送系统通知 */
+  enableNotifications: boolean;
 };
 
 export type PiInstallStatus = {

@@ -95,6 +95,7 @@ export function App() {
 		sendShortcut: "enter-send",
 		piEnvironmentChecked: false,
 		closeToTray: true,
+		enableNotifications: true,
 	});
 	const [settingsNotice, setSettingsNotice] = useState("");
 	const [piStatus, setPiStatus] = useState<PiInstallStatus | null>(null);
@@ -2171,6 +2172,16 @@ function SettingsModal(props: {
 							}
 						/>{" "}
 						关闭窗口时隐藏到系统托盘
+					</label>
+					<label>
+						<input
+							type="checkbox"
+							checked={props.settings.enableNotifications}
+							onChange={(event) =>
+								props.onChange({ enableNotifications: event.target.checked })
+							}
+						/>{" "}
+						会话结束时发送系统通知
 					</label>
 					<div className="setting-field">
 						<span>发送快捷键</span>
