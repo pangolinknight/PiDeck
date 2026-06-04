@@ -4,6 +4,30 @@
 
 All notable changes to pi-desktop are documented here.
 
+## v0.4.2 - 2026-06-04
+
+### Added
+- Message queuing when agent is busy: sending while agent is running
+  automatically queues messages locally, flushed with steer semantics
+  when agent becomes idle (aligned with pi CLI behavior).
+- Cancel button on queued message bubbles to remove pending items.
+- Queue UI: semi-transparent dashed bubble, spinning indicator,
+  "Queue Send" button with pulse animation.
+
+### Improved
+- Queued messages isolated by agentId when switching agents,
+  preventing cross-agent message delivery.
+- Failed sends fall back to queue with toast notification instead of
+  permanent loss.
+- Restart now auto-resolves sessionPath and retries loadMessages
+  on failure for better history restoration.
+
+### Fixed
+- Flush not triggering after agent completes (now pushes runtimeState
+  with isStreaming reset on agent_end).
+- Blank screen after agent restart when history session fails to load.
+- get_commands timeout errors polluting console on startup.
+
 ## v0.4.1 - 2026-06-03
 
 ### Improved
