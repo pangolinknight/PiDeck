@@ -1811,7 +1811,8 @@ function groupToolMessages(messages: ChatMessage[]): RenderMessage[] {
 				...pendingTools.map((m) => m.id),
 			].join("|"),
 			text: pendingText.join("\n\n"),
-			tools: pendingTools,
+			// 必须 .slice() 复制，避免后续 pendingTools.length = 0 原地清空同一个数组引用。
+			tools: pendingTools.slice(),
 			thinking: pendingThinking,
 		});
 		pendingText.length = 0;
