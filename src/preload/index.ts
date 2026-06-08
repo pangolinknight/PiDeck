@@ -270,6 +270,10 @@ const api = {
 			ipcRenderer.invoke(ipcChannels.terminalList, agentId) as Promise<
 				TerminalTab[]
 			>,
+		ensure: (agentId: string) =>
+			ipcRenderer.invoke(ipcChannels.terminalEnsure, agentId) as Promise<
+				TerminalTab[]
+			>,
 		create: (agentId: string) =>
 			ipcRenderer.invoke(ipcChannels.terminalCreate, agentId) as Promise<
 				TerminalTab

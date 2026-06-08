@@ -100,6 +100,26 @@ const terminalExitListeners = new Set<(payload: TerminalExitEvent) => void>();
 
 export function createPreviewApi(): PiDesktopApi {
 	const noop = (() => () => undefined) as any;
+	const createTerminalTab = async (agentId: string) => {
+		const tab: TerminalTab = {
+			id: `preview-terminal-${terminalTabs.length + 1}`,
+			agentId,
+			title: `PowerShell ${terminalTabs.length + 1}`,
+			cwd: "C:/Users/14012/preview-project",
+			shell: "powershell",
+			createdAt: Date.now(),
+		};
+		terminalTabs.push(tab);
+		setTimeout(() => {
+			for (const listener of terminalDataListeners) {
+				listener({
+					tabId: tab.id,
+					data: "Windows PowerShell\r\nPS C:\\\\Users\\\\14012\\\\preview-project> ",
+				});
+			}
+		}, 0);
+		return tab;
+	};
 	return {
 		projects: {
 			list: async () => projects,
@@ -297,26 +317,12 @@ export function createPreviewApi(): PiDesktopApi {
 		terminal: {
 			list: async (agentId) =>
 				terminalTabs.filter((tab) => tab.agentId === agentId),
-			create: async (agentId) => {
-				const tab: TerminalTab = {
-					id: `preview-terminal-${terminalTabs.length + 1}`,
-					agentId,
-					title: `PowerShell ${terminalTabs.length + 1}`,
-					cwd: "C:/Users/14012/preview-project",
-					shell: "powershell",
-					createdAt: Date.now(),
-				};
-				terminalTabs.push(tab);
-				setTimeout(() => {
-					for (const listener of terminalDataListeners) {
-						listener({
-							tabId: tab.id,
-							data: "Windows PowerShell\r\nPS C:\\\\Users\\\\14012\\\\preview-project> ",
-						});
-					}
-				}, 0);
-				return tab;
+			ensure: async (agentId) => {
+				const existing = terminalTabs.filter((tab) => tab.agentId === agentId);
+				if (existing.length > 0) return existing;
+				return [await createTerminalTab(agentId)];
 			},
+			create: createTerminalTab,
 			input: async (tabId, data) => {
 				for (const listener of terminalDataListeners) {
 					listener({ tabId, data });

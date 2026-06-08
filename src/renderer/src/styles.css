@@ -506,7 +506,7 @@ button:disabled {
 }
 /* 项目行布局：去掉折叠箭头列，与普通对话行一致 */
 .project-group > .conversation:first-child {
-	grid-template-columns: 44px minmax(0, 1fr) 48px;
+	grid-template-columns: 44px minmax(0, 1fr) 72px;
 	/* 项目行略深的背景色，与 agent 行区分 */
 	background: rgba(0, 0, 0, 0.02);
 }
@@ -521,6 +521,7 @@ button:disabled {
 	gap: 4px;
 	min-width: 0;
 }
+.project-action,
 .project-info {
 	width: 20px;
 	height: 20px;
@@ -531,6 +532,10 @@ button:disabled {
 	cursor: help;
 	opacity: 0.72;
 }
+.project-action {
+	cursor: pointer;
+}
+.project-action:hover,
 .project-info:hover {
 	background: #cbd0d8;
 	color: #1f2329;

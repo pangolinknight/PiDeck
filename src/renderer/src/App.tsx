@@ -10,6 +10,7 @@ import {
 	Sliders,
 	ChevronLeft,
 	ChevronRight,
+	History,
 	Info,
 	Search,
 	Play,
@@ -204,7 +205,9 @@ export function App() {
 	const [listWidth, setListWidth] = useState(260);
 	const [drawerWidth, setDrawerWidth] = useState(360);
 	const [composerHeight, setComposerHeight] = useState(132);
-	const [terminalOpen, setTerminalOpen] = useState(false);
+	const [terminalOpenByAgent, setTerminalOpenByAgent] = useState<
+		Record<string, boolean>
+	>({});
 	const [terminalHeightByAgent, setTerminalHeightByAgent] = useState<
 		Record<string, number>
 	>({});
@@ -220,6 +223,10 @@ export function App() {
 		(project) => project.id === sessionsProjectId,
 	);
 	const activeAgent = agents.find((agent) => agent.id === activeAgentId);
+	// 终端展开状态按 agent 隔离，避免切换项目/agent 时把别人的终端 UI 一并带过去。
+	const terminalOpen = activeAgentId
+		? Boolean(terminalOpenByAgent[activeAgentId])
+		: false;
 	const activeMessages = activeAgentId
 		? (messagesByAgent[activeAgentId] ?? [])
 		: [];
@@ -330,6 +337,17 @@ export function App() {
 				current && nextAgents.some((agent) => agent.id === current)
 					? current
 					: undefined,
+			);
+			const activeIds = new Set(nextAgents.map((agent) => agent.id));
+			setTerminalOpenByAgent((current) =>
+				Object.fromEntries(
+					Object.entries(current).filter(([agentId]) => activeIds.has(agentId)),
+				),
+			);
+			setTerminalHeightByAgent((current) =>
+				Object.fromEntries(
+					Object.entries(current).filter(([agentId]) => activeIds.has(agentId)),
+				),
 			);
 		});
 		const offMessages = api.agents.onMessages((payload) =>
@@ -740,6 +758,13 @@ export function App() {
 		const result = await api.agents.exportHtml(agentId);
 		setToast(`已导出：${result.path}`);
 		setTimeout(() => setToast(null), 3500);
+	}
+
+	function setTerminalOpenForAgent(agentId: string, open: boolean) {
+		setTerminalOpenByAgent((current) => ({
+			...current,
+			[agentId]: open,
+		}));
 	}
 
 	function handleComposerKeyDown(
@@ -1333,8 +1358,18 @@ export function App() {
 									</div>
 									<span className="project-row-actions">
 										<span
+											className="project-action"
+											title="历史会话"
+											onClick={(event) => {
+												event.stopPropagation();
+												void openProjectSessions(project);
+											}}
+										>
+											<History size={14} />
+										</span>
+										<span
 											className="project-info"
-											title="右键项目可打开历史会话、导入 Codex 会话或删除目录记录；点击项目可切换或折叠该目录的 Agent。"
+											title="点击历史按钮可打开历史会话；右键项目可导入 Codex 会话或删除目录记录；点击项目可切换或折叠该目录的 Agent。"
 											onClick={(event) => event.stopPropagation()}
 										>
 											<Info size={14} />
@@ -1494,7 +1529,10 @@ export function App() {
 								<button
 									className={terminalOpen ? "active" : ""}
 									disabled={!activeAgentId}
-									onClick={() => setTerminalOpen((value) => !value)}
+									onClick={() => {
+										if (!activeAgentId) return;
+										setTerminalOpenForAgent(activeAgentId, !terminalOpen);
+									}}
 									title="显示或隐藏当前 Agent 的终端"
 								>
 									Terminal
@@ -1578,7 +1616,7 @@ export function App() {
 								[activeAgentId]: height,
 							}))
 						}
-						onClose={() => setTerminalOpen(false)}
+						onClose={() => setTerminalOpenForAgent(activeAgentId, false)}
 					/>
 				)}
 

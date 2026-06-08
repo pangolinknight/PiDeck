@@ -24,6 +24,14 @@ export class TerminalSessionManager {
 		);
 	}
 
+	ensure(agentId: string) {
+		const existing = this.list(agentId);
+		if (existing.length > 0) return existing;
+		// Renderer 在 StrictMode 下会重复触发 mount effect；这里提供原子兜底，
+		// 避免 list -> create 两步之间的竞态导致“未点击却多出两个终端”。
+		return [this.create(agentId)];
+	}
+
 	create(agentId: string): TerminalTab {
 		const cwd = this.getAgentCwd(agentId);
 		const runtimes = this.ensureAgent(agentId);

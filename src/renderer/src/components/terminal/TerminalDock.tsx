@@ -94,11 +94,7 @@ export function TerminalDock(props: {
 		async function loadTabs() {
 			setLoading(true);
 			try {
-				const existing = await props.terminal.list(props.agentId);
-				const nextTabs =
-					existing.length > 0
-						? existing
-						: [await props.terminal.create(props.agentId)];
+				const nextTabs = await props.terminal.ensure(props.agentId);
 				if (cancelled) return;
 				setTabs(nextTabs);
 				setActiveTabId(nextTabs[0]?.id ?? "");

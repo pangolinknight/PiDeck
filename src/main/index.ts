@@ -295,6 +295,9 @@ function registerIpc() {
 	ipcMain.handle(ipcChannels.terminalList, (_event, agentId: string) =>
 		terminalManager.list(agentId),
 	);
+	ipcMain.handle(ipcChannels.terminalEnsure, (_event, agentId: string) =>
+		terminalManager.ensure(agentId),
+	);
 	ipcMain.handle(ipcChannels.terminalCreate, (_event, agentId: string) =>
 		terminalManager.create(agentId),
 	);

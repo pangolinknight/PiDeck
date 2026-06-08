@@ -63,6 +63,7 @@ export const ipcChannels = {
 	agentsRpcLog: "agents:rpc-log",
 
 	terminalList: "terminal:list",
+	terminalEnsure: "terminal:ensure",
 	terminalCreate: "terminal:create",
 	terminalInput: "terminal:input",
 	terminalResize: "terminal:resize",

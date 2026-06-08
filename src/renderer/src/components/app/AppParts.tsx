@@ -1330,7 +1330,9 @@ function SessionsPanel(props: {
 			{props.sessions.length === 0 && (
 				<div className="sessions-empty">
 					<strong>暂无历史会话</strong>
-					<span>从项目行右键打开历史会话；新会话完成后会出现在这里。</span>
+					<span>
+						点击项目右侧历史按钮或右键项目打开历史会话；新会话完成后会出现在这里。
+					</span>
 				</div>
 			)}
 			{props.sessions.map((session) => (
