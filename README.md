@@ -8,7 +8,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Electron](https://img.shields.io/badge/Electron-38-47848f)
 ![React](https://img.shields.io/badge/React-19-61dafb)
-![Version](https://img.shields.io/badge/version-0.4.10-green)
+![Version](https://img.shields.io/badge/version-0.4.11-green)
 
 `pi-desktop` **不是** pi 的分支。它是一个轻量 Electron 外壳，通过启动多个 `pi --mode rpc` 进程，将项目管理、会话管理、对话界面、配置管理和工具编排整合到一个原生桌面应用中——所有 Agent 能力由 pi 原生提供。
 
@@ -16,9 +16,9 @@
 
 ## 📋 更新日志
 
-> **最新版本 v0.4.10**（2026-06-08）
+> **最新版本 v0.4.11**（2026-06-08）
 
-### v0.4.10 更新
+### v0.4.11 更新
 - 🗂️ 项目历史快捷入口：项目行右侧新增固定历史按钮，打开历史会话更直接。
 - 🧾 会话结束修改摘要：Agent 完成后在对话流末尾展示本轮修改文件和修改行数。
 - 🔔 应用内检查更新：定时查询 GitHub Release，新版本弹窗展示发布日志和浏览器下载入口。

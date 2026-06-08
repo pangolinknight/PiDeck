@@ -8,7 +8,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Electron](https://img.shields.io/badge/Electron-38-47848f)
 ![React](https://img.shields.io/badge/React-19-61dafb)
-![Version](https://img.shields.io/badge/version-0.4.10-green)
+![Version](https://img.shields.io/badge/version-0.4.11-green)
 
 `pi-desktop` is **not** a fork of pi. It is a lightweight Electron shell that orchestrates multiple `pi --mode rpc` processes, providing a native desktop UI for projects, sessions, conversations, configuration, and tool orchestration — all powered by pi's native agent capabilities.
 
@@ -16,9 +16,9 @@
 
 ## 📋 Changelog
 
-> **Latest: v0.4.10** (2026-06-08)
+> **Latest: v0.4.11** (2026-06-08)
 
-### v0.4.10 Updates
+### v0.4.11 Updates
 - 🗂️ Project history quick action: each project row now includes a dedicated history button for opening historical sessions directly.
 - 🧾 Session file-change summary: completed agent runs now show modified file names and changed line counts at the end of the chat timeline.
 - 🔔 In-app update check: pi-desktop periodically checks GitHub Releases and shows release notes plus browser download links when a newer version is available.

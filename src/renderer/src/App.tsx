@@ -798,6 +798,11 @@ export function App() {
 		}
 	}
 
+	function showToast(message: string, duration = 3500) {
+		setToast(message);
+		window.setTimeout(() => setToast(null), duration);
+	}
+
 	async function checkAppUpdate(source: "auto" | "manual" = "manual") {
 		if (updateChecking) return;
 		setUpdateChecking(true);
@@ -807,14 +812,14 @@ export function App() {
 				setUpdateInfo(next);
 			} else if (source === "manual") {
 				setSettingsNotice(`当前已是最新版本 v${next.currentVersion}。`);
-				setToast("当前已是最新版本");
+				showToast("当前已是最新版本");
 			}
 		} catch (error) {
 			if (source === "manual") {
 				const message = error instanceof Error ? error.message : String(error);
 				setSettingsNotice(`检查更新失败：${message}`);
 				setUpdateError(message);
-				setToast("检查更新失败");
+				showToast("检查更新失败");
 			}
 		} finally {
 			setUpdateChecking(false);
@@ -2320,7 +2325,10 @@ export function App() {
 							opened ? "开发者控制台已打开。" : "开发者控制台已关闭。",
 						);
 					}}
-					onClose={() => setSettingsOpen(false)}
+					onClose={() => {
+						setSettingsOpen(false);
+						setSettingsNotice("");
+					}}
 					onChange={updateSettings}
 				/>
 			)}

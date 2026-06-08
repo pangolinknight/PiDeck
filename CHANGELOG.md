@@ -4,18 +4,21 @@
 
 All notable changes to pi-desktop are documented here.
 
-## v0.4.10 - 2026-06-08
+## v0.4.11 - 2026-06-08
 
 ### Added
 - Project history quick action: each project row now includes a dedicated history button, so historical sessions can be opened without relying on the context menu.
 - Session file-change summary: completed agent runs now show a compact list of modified file names and changed line counts at the end of the chat timeline.
 - In-app update check: pi-desktop now periodically checks the latest GitHub Release and shows release notes plus browser download links when a newer version is available.
+- Update failure guidance: manual update checks now explain GitHub connectivity issues, suggest configuring the desktop proxy, and provide a direct Release-page fallback.
 
 ### Fixed
 - Agent terminal isolation: switching projects or agents no longer reuses another agent's open terminal state.
 - Terminal initialization: opening the terminal no longer creates duplicate tabs automatically in development/runtime race conditions.
 - macOS app icon packaging: release builds now generate a real `.icns` file instead of a mislabeled PNG, improving Dock icon rendering.
 - Composer wrapping and resizing: the prompt input now wraps and scrolls more reliably for long content, can be shrunk again after being dragged to maximum height, and the window no longer shrinks below the layout's safe range.
+- Update-check toast cleanup: manual update result hints now disappear automatically instead of staying pinned at the bottom of the window.
+- Project history refresh feedback: the history modal now shows loading feedback when refreshing sessions.
 
 ### Improved
 - Model defaults: newly added models now start with `contextWindow=1000000`, `maxTokens=128000`, and reasoning enabled by default.
