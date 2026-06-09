@@ -8,7 +8,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Electron](https://img.shields.io/badge/Electron-38-47848f)
 ![React](https://img.shields.io/badge/React-19-61dafb)
-![Version](https://img.shields.io/badge/version-0.4.12-green)
+![Version](https://img.shields.io/badge/version-0.4.13-green)
 
 `pi-desktop` **不是** pi 的分支。它是一个轻量 Electron 外壳，通过启动多个 `pi --mode rpc` 进程，将项目管理、会话管理、对话界面、配置管理和工具编排整合到一个原生桌面应用中——所有 Agent 能力由 pi 原生提供。
 
@@ -16,12 +16,11 @@
 
 ## 📋 更新日志
 
-> **最新版本 v0.4.12**（2026-06-09）
+> **最新版本 v0.4.13**（2026-06-09）
 
-### v0.4.12 更新
-- 💬 运行中发送增强：Agent 流式执行时可选择 `steer` 加入当前回合，或选择 `followUp` 排队到结束后发送。
-- 🏷️ 消息投递标记：运行中发送的用户消息会标出“下次调用前”或“结束后排队”，更容易判断消息何时被 Agent 消费。
-- ✨ 气泡尺寸优化：短用户消息会按实际内容宽度收缩，即使带有投递标记也不会被撑长。
+### v0.4.13 更新
+- 🪟 Windows 路径修复：环境检测和 RPC Agent 启动现在都能处理包含空格的 npm shim 路径。
+- 📐 长回答宽度修复：长文本回答、历史会话、思考块、代码块和表格不再撑出会话区域。
 
 [查看完整更新日志 →](CHANGELOG.zh-CN.md)
 

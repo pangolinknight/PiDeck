@@ -1299,14 +1299,20 @@ body.is-terminal-resizing .terminal-resize-handle::before {
 	gap: 12px;
 	margin-bottom: 20px;
 	align-items: flex-start;
+	width: 100%;
 	max-width: 100%;
+	min-width: 0;
+	overflow-x: clip;
 }
 .agent-run {
 	display: flex;
 	gap: 12px;
 	margin-bottom: 20px;
 	align-items: flex-start;
+	width: 100%;
 	max-width: 100%;
+	min-width: 0;
+	overflow-x: clip;
 }
 .chat-message.mine {
 	flex-direction: row-reverse;
@@ -1345,14 +1351,17 @@ body.is-terminal-resizing .terminal-resize-handle::before {
 	color: white;
 }
 .msg-content {
+	width: min(780px, calc(100% - 54px));
 	max-width: min(780px, calc(100% - 54px));
 	min-width: 0;
 }
 .agent-run-content {
+	width: min(780px, calc(100% - 54px));
 	max-width: min(780px, calc(100% - 54px));
 	min-width: 0;
 }
 .chat-message.mine .msg-content {
+	width: auto;
 	max-width: min(640px, calc(100% - 54px));
 	display: flex;
 	flex-direction: column;
@@ -1398,27 +1407,40 @@ body.is-terminal-resizing .terminal-resize-handle::before {
 }
 .agent-run-stack {
 	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	gap: 10px;
+	max-width: 100%;
+	min-width: 0;
 }
 .agent-run-message-stack {
 	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	gap: 5px;
+	max-width: 100%;
+	min-width: 0;
 }
 .agent-run .compact-message {
 	margin: 0;
 	display: block;
+	max-width: 100%;
+	min-width: 0;
+	overflow-x: clip;
 }
 .agent-run .compact-message .msg-avatar,
 .agent-run .compact-message .msg-name {
 	display: none;
 }
 .agent-run .compact-message .msg-content {
+	width: 100%;
 	max-width: 100%;
 }
 .agent-run .compact-message .msg-bubble {
 	box-shadow: none;
 }
 .msg-bubble {
+	box-sizing: border-box;
+	max-width: 100%;
+	min-width: 0;
 	overflow-wrap: anywhere;
 	word-break: break-word;
 	line-height: 1.62;
@@ -1436,6 +1458,11 @@ body.is-terminal-resizing .terminal-resize-handle::before {
 .chat-message.mine .user-message-text {
 	white-space: pre-wrap;
 }
+.markdown-body {
+	max-width: 100%;
+	min-width: 0;
+	overflow-x: clip;
+}
 .markdown-body p {
 	margin: 0 0 8px;
 }
@@ -1443,17 +1470,23 @@ body.is-terminal-resizing .terminal-resize-handle::before {
 	margin-bottom: 0;
 }
 .markdown-body pre {
+	box-sizing: border-box;
 	overflow-x: auto;
 	max-width: 100%;
+	min-width: 0;
 	padding: 10px;
 	border-radius: 8px;
 	background: #f5f7fa;
 }
 .code-block-wrap {
 	position: relative;
+	max-width: 100%;
+	min-width: 0;
 	margin: 10px 0;
 }
 .code-block-wrap pre {
+	width: 100%;
+	max-width: 100%;
 	margin: 0;
 	padding-top: 34px;
 }
@@ -1476,9 +1509,10 @@ body.is-terminal-resizing .terminal-resize-handle::before {
 }
 .markdown-body table {
 	display: block;
-	width: max-content;
-	min-width: 100%;
+	box-sizing: border-box;
+	width: 100%;
 	max-width: 100%;
+	min-width: 0;
 	margin: 10px 0;
 	overflow-x: auto;
 	border-collapse: collapse;

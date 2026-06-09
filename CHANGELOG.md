@@ -4,6 +4,12 @@
 
 All notable changes to pi-desktop are documented here.
 
+## v0.4.13 - 2026-06-09
+
+### Fixed
+- Windows pi path handling: install checks and RPC agent startup now handle npm shim paths that contain spaces.
+- Long assistant answers now stay within the conversation area, including historical sessions, thinking blocks, code blocks, and tables.
+
 ## v0.4.12 - 2026-06-09
 
 ### Added
