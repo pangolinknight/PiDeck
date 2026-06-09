@@ -2102,6 +2102,7 @@ export function ProjectContextMenu(props: {
 	onImportCodexSessions: () => void;
 	onRemoveProject: () => void;
 }) {
+	const isChatProject = props.menu.project.kind === "chat";
 	return (
 		<div className="context-backdrop" onClick={props.onClose}>
 			<div
@@ -2110,10 +2111,14 @@ export function ProjectContextMenu(props: {
 				onClick={(event) => event.stopPropagation()}
 			>
 				<button onClick={props.onOpenSessions}>历史会话</button>
-				<button onClick={props.onImportCodexSessions}>
-					导入 Codex 会话
-				</button>
-				<button onClick={props.onRemoveProject}>删除目录记录</button>
+				{!isChatProject && (
+					<>
+						<button onClick={props.onImportCodexSessions}>
+							导入 Codex 会话
+						</button>
+						<button onClick={props.onRemoveProject}>删除目录记录</button>
+					</>
+				)}
 			</div>
 		</div>
 	);

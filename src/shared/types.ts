@@ -5,6 +5,7 @@ export type Project = {
 	lastOpenedAt: number;
 	pinned?: boolean;
 	sortOrder?: number;
+	kind?: "chat";
 };
 
 export type AgentStatus = "starting" | "idle" | "running" | "error" | "closed";

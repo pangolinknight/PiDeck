@@ -15,17 +15,27 @@ const now = Date.now();
 
 const projects: Project[] = [
 	{
+		id: "builtin-chat",
+		name: "Chat",
+		path: "C:/Users/14012/AppData/Roaming/pi-desktop/chat-workspace",
+		lastOpenedAt: now,
+		pinned: true,
+		sortOrder: -1,
+		kind: "chat",
+	},
+	{
 		id: "preview-project",
 		name: "preview-project",
 		path: "C:/Users/14012/preview-project",
 		lastOpenedAt: now,
+		sortOrder: 0,
 	},
 ];
 
 const agents: AgentTab[] = [
 	{
 		id: "preview-agent",
-		projectId: "preview-project",
+		projectId: "builtin-chat",
 		cwd: projects[0].path,
 		title: "预览会话",
 		status: "idle",

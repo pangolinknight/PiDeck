@@ -118,8 +118,13 @@ function getToolChangedLineCount(toolName: string, args: any) {
 }
 
 function displayProjectDirectoryName(project: Project) {
+	if (isChatProject(project)) return "Chat";
 	const normalizedPath = project.path.replace(/\\/g, "/").replace(/\/+$/, "");
 	return normalizedPath.split("/").pop() || project.name || project.path;
+}
+
+function isChatProject(project?: Project) {
+	return project?.kind === "chat";
 }
 
 function isReplacementForPendingAgent(agent: AgentTab, pending: AgentTab) {
@@ -1151,6 +1156,9 @@ export function App() {
 
 	async function reorderProjects(sourceProjectId: string, targetProjectId: string) {
 		if (!canReorderProjects || sourceProjectId === targetProjectId) return;
+		const sourceProject = projects.find((project) => project.id === sourceProjectId);
+		const targetProject = projects.find((project) => project.id === targetProjectId);
+		if (isChatProject(sourceProject) || isChatProject(targetProject)) return;
 		const sourceIndex = projects.findIndex((project) => project.id === sourceProjectId);
 		const targetIndex = projects.findIndex((project) => project.id === targetProjectId);
 		if (sourceIndex === -1 || targetIndex === -1) return;
@@ -1198,6 +1206,7 @@ export function App() {
 		projectId: string,
 	) {
 		if (!draggingProjectId || draggingProjectId === projectId) return;
+		if (isChatProject(projects.find((project) => project.id === projectId))) return;
 		event.preventDefault();
 		event.dataTransfer.dropEffect = "move";
 		setDragOverProjectId(projectId);
@@ -2006,6 +2015,8 @@ export function App() {
 				<div className="conversation-list">
 					{filteredProjects.map((project) => {
 						const projectDirectoryName = displayProjectDirectoryName(project);
+						const projectIsChat = isChatProject(project);
+						const canDragProject = canReorderProjects && !projectIsChat;
 						const projectAgents = filteredAgents.filter(
 							(agent) => agent.projectId === project.id,
 						);
@@ -2016,7 +2027,8 @@ export function App() {
 							project.id === activeProjectId && !activeAgentId
 								? "conversation active"
 								: "conversation",
-							canReorderProjects ? "project-draggable" : "",
+							canDragProject ? "project-draggable" : "",
+							projectIsChat ? "chat-project" : "",
 							isDraggingProject ? "dragging" : "",
 							isProjectDropTarget ? "drag-over" : "",
 						]
@@ -2026,7 +2038,7 @@ export function App() {
 							<div key={project.id} className="project-group">
 								<button
 									className={projectRowClass}
-									draggable={canReorderProjects}
+									draggable={canDragProject}
 									onDragStart={(event) =>
 										handleProjectDragStart(event, project.id)
 									}
@@ -2075,6 +2087,11 @@ export function App() {
 										<div className="conversation-title">
 											<strong title={project.path}>{projectDirectoryName}</strong>
 										</div>
+										{projectIsChat && (
+											<p className="chat-project-guide">
+												内置对话区，不需要选择项目目录
+											</p>
+										)}
 									</div>
 									<span className="project-row-actions">
 										<span
@@ -2089,23 +2106,29 @@ export function App() {
 										</span>
 										<span
 											className="project-info"
-											title="点击历史按钮可打开历史会话；右键项目可导入 Codex 会话或删除目录记录；点击项目可切换或折叠该目录的 Agent。"
+											title={
+												projectIsChat
+													? "Chat 是固定置顶的内置对话区；会话写入应用用户目录，不需要先添加项目。"
+													: "点击历史按钮可打开历史会话；右键项目可导入 Codex 会话或删除目录记录；点击项目可切换或折叠该目录的 Agent。"
+											}
 											onClick={(event) => event.stopPropagation()}
 										>
 											<Info size={14} />
 										</span>
-										<span
-											className="project-action project-delete"
-											title="删除目录记录"
-											onClick={async (event) => {
-												event.stopPropagation();
-												const next = await api.projects.remove(project.id);
-												setProjects(next);
-												updateAfterProjectRemoved(project.id, next);
-											}}
-										>
-											<Trash2 size={14} />
-										</span>
+										{!projectIsChat && (
+											<span
+												className="project-action project-delete"
+												title="删除目录记录"
+												onClick={async (event) => {
+													event.stopPropagation();
+													const next = await api.projects.remove(project.id);
+													setProjects(next);
+													updateAfterProjectRemoved(project.id, next);
+												}}
+											>
+												<Trash2 size={14} />
+											</span>
+										)}
 									</span>
 								</button>
 								{!isCollapsed &&
