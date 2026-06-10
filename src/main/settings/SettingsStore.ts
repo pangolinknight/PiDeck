@@ -18,6 +18,7 @@ const defaultSettings: AppSettings = {
   desktopProxyEnabled: false,
   desktopProxyUrl: "http://127.0.0.1:7890",
   desktopProxyBypass: "localhost,127.0.0.1,::1",
+  telemetryEnabled: true,
 };
 
 export class SettingsStore {

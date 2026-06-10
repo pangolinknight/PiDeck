@@ -4,6 +4,7 @@ import {
 	ipcMain,
 	Menu,
 	nativeImage,
+	net,
 	shell,
 	Tray,
 } from "electron";
@@ -32,6 +33,7 @@ import { applyDesktopProxy } from "./settings/DesktopProxy";
 import { GitService } from "./git/GitService";
 import { ConfigManager } from "./config/ConfigManager";
 import { TerminalSessionManager } from "./terminal/TerminalSessionManager";
+import { TelemetryService } from "./telemetry/TelemetryService";
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -51,6 +53,10 @@ let terminalManager: TerminalSessionManager;
 const RELEASES_URL = "https://github.com/ayuayue/pi-desktop/releases";
 const LATEST_RELEASE_API =
 	"https://api.github.com/repos/ayuayue/pi-desktop/releases/latest";
+const POSTHOG_PROJECT_KEY =
+	process.env.POSTHOG_PROJECT_KEY ??
+	"phc_xgJ8gFUMgExZEEPzZ7VRa7698ENcaDRquWZVGYb2dCFK";
+const POSTHOG_HOST = process.env.POSTHOG_HOST ?? "https://us.i.posthog.com";
 
 type GitHubReleaseAsset = {
 	name: string;
@@ -561,6 +567,34 @@ function registerIpc() {
 	});
 }
 
+function sendTelemetryHeartbeat() {
+	const telemetry = new TelemetryService({
+		settingsStore,
+		config: {
+			projectKey: POSTHOG_PROJECT_KEY,
+			host: POSTHOG_HOST,
+		},
+		metadata: {
+			appVersion: app.getVersion(),
+			platform: process.platform,
+			arch: process.arch,
+			packaged: app.isPackaged,
+		},
+		capture: async (request) => {
+			const response = await net.fetch(request.url, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(request.body),
+			});
+			if (!response.ok) {
+				throw new Error(`Telemetry request failed: ${response.status}`);
+			}
+		},
+	});
+
+	void telemetry.sendHeartbeat().catch(() => undefined);
+}
+
 app.whenReady().then(async () => {
 	projectStore = new ProjectStore();
 	fileSystemService = new FileSystemService();
@@ -583,6 +617,7 @@ app.whenReady().then(async () => {
 	await settingsStore.load();
 	await applyDesktopProxy(settingsStore.get());
 	registerIpc();
+	sendTelemetryHeartbeat();
 	createWindow();
 	setupTray();
 

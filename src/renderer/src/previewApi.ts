@@ -222,6 +222,7 @@ export function createPreviewApi(): PiDesktopApi {
 				desktopProxyEnabled: false,
 				desktopProxyUrl: "http://127.0.0.1:7890",
 				desktopProxyBypass: "localhost,127.0.0.1,::1",
+				telemetryEnabled: true,
 			}),
 			update: async (patch): Promise<AppSettings> => ({
 				useNativeTitleBar: true,
@@ -239,6 +240,7 @@ export function createPreviewApi(): PiDesktopApi {
 				desktopProxyUrl: "http://127.0.0.1:7890",
 				desktopProxyBypass: "localhost,127.0.0.1,::1",
 				...patch,
+				telemetryEnabled: patch.telemetryEnabled ?? true,
 			}),
 			testPiProxy: async () => ({
 				success: true,

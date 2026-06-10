@@ -8,7 +8,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Electron](https://img.shields.io/badge/Electron-38-47848f)
 ![React](https://img.shields.io/badge/React-19-61dafb)
-![Version](https://img.shields.io/badge/version-0.4.15-green)
+![Version](https://img.shields.io/badge/version-0.4.16-green)
 
 `pi-desktop` is **not** a fork of pi. It is a lightweight Electron shell that orchestrates multiple `pi --mode rpc` processes, providing a native desktop UI for projects, sessions, conversations, configuration, and tool orchestration — all powered by pi's native agent capabilities.
 
@@ -16,13 +16,12 @@
 
 ## 📋 Changelog
 
-> **Latest: v0.4.15** (2026-06-09)
+> **Latest: v0.4.16** (2026-06-11)
 
-### v0.4.15 Updates
-- 💬 Built-in Chat workspace: a fixed Chat entry now sits at the top of the project list, so you can start general conversations without adding a project first.
-- 🧭 Project ordering: regular projects can now be drag-sorted and the order is persisted.
-- 🖥️ Terminal restore: switching away from an agent and back now restores terminal scrollback and scrollbar state.
-- 🎨 Brand icon refresh: the app icon, boot logo, and built-in Chat entry now use the new `#14b814` brand green.
+### v0.4.16 Updates
+- 📊 Anonymous usage statistics: packaged builds send at most one `app_heartbeat` per day to understand version distribution, platform compatibility, and active installations.
+- 🔒 Privacy control: Settings now includes an “Anonymous usage statistics” switch that can be turned off at any time; project paths, code, message content, session content, and file names are not collected.
+- 🧪 Stability: added telemetry unit tests covering opt-out, unpackaged builds, missing keys, daily throttling, and PostHog person property sync.
 
 [View Full Changelog →](CHANGELOG.md)
 
@@ -209,7 +208,7 @@ See [CHANGELOG.md](CHANGELOG.md) (English) or [CHANGELOG.zh-CN.md](CHANGELOG.zh-
 
 ## Security
 
-This app starts local `pi` processes and exposes limited file operations through Electron IPC. Only run from trusted source code. The app sends no telemetry and uploads no files. pi agent process proxy and desktop model fetch/test proxy can be configured separately; external links opened in the system browser still follow the browser/system network settings.
+This app starts local `pi` processes and exposes limited file operations through Electron IPC. Only run from trusted source code. The app sends an anonymous, low-frequency `app_heartbeat` by default to understand version distribution, platform compatibility, and active installations; it can be disabled in Settings. It does not collect project paths, code, message content, session content, or file names, and it does not upload files. The third-party analytics service receives request metadata. pi agent process proxy and desktop model fetch/test proxy can be configured separately; external links opened in the system browser still follow the browser/system network settings.
 
 ## License
 

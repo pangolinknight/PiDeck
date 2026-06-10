@@ -302,6 +302,7 @@ export function App() {
 		desktopProxyEnabled: false,
 		desktopProxyUrl: "http://127.0.0.1:7890",
 		desktopProxyBypass: "localhost,127.0.0.1,::1",
+		telemetryEnabled: true,
 	});
 	const [settingsNotice, setSettingsNotice] = useState("");
 	const [piProxyNotice, setPiProxyNotice] = useState("");

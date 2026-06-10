@@ -171,6 +171,12 @@ export type AppSettings = {
 	desktopProxyUrl: string;
 	/** 桌面端代理绕过列表，对应 Electron proxyBypassRules */
 	desktopProxyBypass: string;
+	/** 是否发送匿名、低频、最小字段的使用统计 */
+	telemetryEnabled: boolean;
+	/** 本地生成的匿名安装标识，不包含账号、路径或机器名 */
+	telemetryInstallId?: string;
+	/** 最近一次发送 app_heartbeat 的本地日期，格式 YYYY-MM-DD */
+	telemetryLastHeartbeatDate?: string;
 };
 
 export type PiInstallStatus = {

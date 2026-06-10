@@ -2310,6 +2310,16 @@ export function SettingsModal(props: {
 										</select>
 									</div>
 								</SettingsSection>
+								<SettingsSection title="隐私">
+									<SettingSwitch
+										title="匿名使用统计"
+										description="帮助了解版本分布、平台兼容性和活跃安装数量。不会收集项目路径、代码、消息内容或文件名。"
+										checked={props.settings.telemetryEnabled}
+										onChange={(checked) =>
+											props.onChange({ telemetryEnabled: checked })
+										}
+									/>
+								</SettingsSection>
 							</>
 						)}
 						{activeTab === "proxy" && (

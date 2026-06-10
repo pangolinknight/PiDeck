@@ -4,6 +4,16 @@
 
 All notable changes to pi-desktop are documented here.
 
+## v0.4.16 - 2026-06-11
+
+### Added
+- Anonymous usage statistics: packaged builds now send at most one `app_heartbeat` per day to understand version distribution, platform compatibility, and active installations.
+- Privacy control: Settings now includes an opt-out switch for anonymous usage statistics.
+
+### Improved
+- Privacy documentation now explains what the heartbeat collects, what it does not collect, and that the third-party analytics service receives request metadata.
+- Telemetry coverage now includes tests for opt-out, unpackaged builds, missing project keys, daily throttling, and PostHog person property sync.
+
 ## v0.4.15 - 2026-06-09
 
 ### Added
