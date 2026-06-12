@@ -209,10 +209,6 @@ export function App() {
 	const [promptByAgent, setPromptByAgent] = useState<Record<string, string>>({});
 	/** 当前进行的操作类型，用于按钮 loading 状态 */
 	const [loadingAction, setLoadingAction] = useState<null | "restart">(null);
-	/** 键盘上下键切换的历史消息列表 */
-	const [messageHistory, setMessageHistory] = useState<string[]>([]);
-	/** 当前在历史中的索引，-1 表示新输入；用 ref 确保键盘事件回调中读取到最新的值 */
-	const historyIndexRef = useRef(-1);
 	const [attachedImagesByAgent, setAttachedImagesByAgent] = useState<
 		Record<string, ImageContent[]>
 	>({});
@@ -1601,41 +1597,6 @@ export function App() {
 			setPrompt((current) => clearSuggestionTrigger(current));
 			setSuggestionsOpen(false);
 		}
-		// 上下键切换历史消息：类似 CLI，将之前发送过的消息填入输入框
-		if (
-			event.key === "ArrowUp" &&
-			!event.shiftKey &&
-			!event.ctrlKey &&
-			!event.metaKey
-		) {
-			event.preventDefault();
-			const idx = historyIndexRef.current;
-			const nextIndex = Math.min(idx + 1, messageHistory.length - 1);
-			if (nextIndex !== idx && messageHistory[nextIndex]) {
-				setPrompt(messageHistory[nextIndex]);
-				historyIndexRef.current = nextIndex;
-			}
-			return;
-		}
-		if (
-			event.key === "ArrowDown" &&
-			!event.shiftKey &&
-			!event.ctrlKey &&
-			!event.metaKey
-		) {
-			event.preventDefault();
-			const idx = historyIndexRef.current;
-			if (idx > 0) {
-				const nextIndex = idx - 1;
-				setPrompt(messageHistory[nextIndex]);
-				historyIndexRef.current = nextIndex;
-			} else if (idx === 0) {
-				// 回到最顶上时清空输入框
-				setPrompt("");
-				historyIndexRef.current = -1;
-			}
-			return;
-		}
 		const enterIntent = getComposerEnterIntent(event, settings.sendShortcut);
 		if (enterIntent === "send") {
 			event.preventDefault();
@@ -1704,14 +1665,6 @@ export function App() {
 			images,
 			...(behavior ? { streamingBehavior: behavior } : {}),
 		});
-		recordMessageHistory(message);
-	}
-
-	function recordMessageHistory(message: string) {
-		if (message.trim()) {
-			setMessageHistory((current) => [message.trim(), ...current]);
-			historyIndexRef.current = -1;
-		}
 	}
 
 	function resendUserMessage(message: ChatMessage) {
