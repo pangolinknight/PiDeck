@@ -60,6 +60,7 @@
 	--shadow-popover: 0 12px 32px rgba(20, 24, 31, 0.12);
 	--shadow-modal: 0 24px 80px rgba(20, 24, 31, 0.22);
 	--shadow-composer: 0 8px 28px rgba(20, 24, 31, 0.08);
+	--shadow-drawer: -8px 0 24px rgba(20, 24, 31, 0.05);
 	--focus-ring: 0 0 0 2px rgba(35, 134, 54, 0.16);
 	--overlay-backdrop: rgba(15, 18, 24, 0.35);
 	--overlay-backdrop-soft: rgba(15, 23, 42, 0.14);
@@ -95,6 +96,7 @@
 	--shadow-popover: 0 14px 36px rgba(0, 0, 0, 0.38);
 	--shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.55);
 	--shadow-composer: 0 8px 28px rgba(0, 0, 0, 0.28);
+	--shadow-drawer: -8px 0 24px rgba(0, 0, 0, 0.32);
 	--focus-ring: 0 0 0 2px rgba(85, 215, 116, 0.28);
 	--overlay-backdrop: rgba(0, 0, 0, 0.48);
 	--overlay-backdrop-soft: rgba(0, 0, 0, 0.4);
@@ -2933,7 +2935,7 @@ body.is-composer-resizing .composer-resize-handle::after {
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
-	box-shadow: -8px 0 24px rgba(20, 24, 31, 0.05);
+	box-shadow: var(--shadow-drawer);
 	overflow: hidden;
 }
 .drawer-header {
@@ -6155,21 +6157,21 @@ body.is-composer-resizing .composer-resize-handle::after {
 
 /* 调试按钮 */
 .debug-toggle {
-	border: 1px solid #d4dae3;
+	border: 1px solid var(--color-border-subtle);
 	background: transparent;
-	color: #5a6678;
+	color: var(--color-text-secondary);
 	padding: 3px 10px;
 	border-radius: var(--radius-md);
 	font-size: var(--font-size-caption);
 	cursor: pointer;
 }
 .debug-toggle:hover {
-	background: #eef3f8;
+	background: var(--color-bg-hover);
 }
 .debug-toggle.active {
-	background: #1a1e26;
-	color: #c8cdd5;
-	border-color: #333a45;
+	border-color: color-mix(in srgb, var(--color-accent) 32%, var(--color-border-subtle));
+	background: var(--color-bg-active);
+	color: var(--color-accent);
 }
 
 /* ── 本次会话修改文件区域 ─────────────────────── */
