@@ -552,11 +552,11 @@ select:focus-visible {
 }
 .window-control.close:hover {
 	background: var(--color-danger);
-	color: #fff;
+	color: var(--color-text-inverse);
 }
 .window-control.close:active {
 	background: color-mix(in srgb, var(--color-danger) 86%, #000);
-	color: #fff;
+	color: var(--color-text-inverse);
 }
 .custom-titlebar-enabled .chat-list-pane {
 	margin-top: calc(-1 * var(--window-drag-height));
@@ -1763,8 +1763,8 @@ body.is-terminal-resizing .terminal-resize-handle::before {
 	color: var(--terminal-fg);
 }
 .terminal-tab-close:hover {
-	background: rgba(239, 68, 68, 0.12);
-	color: #dc2626;
+	background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+	color: var(--color-danger);
 	opacity: 1;
 }
 .terminal-actions {
@@ -1871,7 +1871,7 @@ body.is-terminal-resizing .terminal-resize-handle::before {
 }
 .terminal-placeholder {
 	margin-top: 14px;
-	color: #8b95a5;
+	color: var(--terminal-muted);
 }
 .terminal-copy-notice {
 	position: absolute;
@@ -6078,11 +6078,24 @@ body.is-composer-resizing .composer-resize-handle::after {
 
 /* RPC 日志弹窗 */
 .rpc-log-modal {
+	--rpc-log-bg: var(--color-bg-panel);
+	--rpc-log-surface: var(--color-bg-muted);
+	--rpc-log-input-bg: var(--color-bg-panel);
+	--rpc-log-border: var(--color-border-subtle);
+	--rpc-log-border-strong: var(--color-border-strong);
+	--rpc-log-text: var(--color-text-secondary);
+	--rpc-log-strong: var(--color-text-primary);
+	--rpc-log-muted: var(--color-text-tertiary);
+	--rpc-log-send: var(--color-info);
+	--rpc-log-recv: var(--color-accent);
+	--rpc-log-detail-bg: var(--color-code-bg);
+	--rpc-log-detail-text: var(--color-code-text);
 	width: min(1000px, 92vw);
 	height: min(720px, 82vh);
 	display: flex;
 	flex-direction: column;
-	background: #1a1e26;
+	background: var(--rpc-log-bg);
+	border: 1px solid var(--rpc-log-border);
 	border-radius: var(--radius-lg);
 	overflow: hidden;
 }
@@ -6091,8 +6104,8 @@ body.is-composer-resizing .composer-resize-handle::after {
 	align-items: center;
 	justify-content: space-between;
 	padding: 12px 16px;
-	background: #252a33;
-	color: #c8cdd5;
+	background: var(--rpc-log-surface);
+	color: var(--rpc-log-strong);
 }
 .rpc-log-header {
 	gap: 12px;
@@ -6104,9 +6117,9 @@ body.is-composer-resizing .composer-resize-handle::after {
 }
 .rpc-log-toolbar button,
 .rpc-log-entry-actions button {
-	border: 1px solid #3a4150;
-	background: #1f2530;
-	color: #c8cdd5;
+	border: 1px solid var(--rpc-log-border);
+	background: var(--rpc-log-input-bg);
+	color: var(--rpc-log-text);
 	border-radius: var(--radius-md);
 	padding: 4px 8px;
 	font-size: var(--font-size-caption);
@@ -6115,16 +6128,16 @@ body.is-composer-resizing .composer-resize-handle::after {
 .rpc-log-toolbar button:hover,
 .rpc-log-entry-actions button:hover,
 .rpc-log-toolbar button.active {
-	border-color: #4f8cff;
-	color: #9cc3ff;
+	border-color: var(--color-info);
+	color: var(--color-info);
 }
 .rpc-log-toolbar {
 	display: flex;
 	gap: 10px;
 	align-items: center;
 	padding: 10px 14px;
-	background: #1f2530;
-	border-bottom: 1px solid #2b3140;
+	background: var(--rpc-log-surface);
+	border-bottom: 1px solid var(--rpc-log-border);
 }
 .rpc-log-filter-tabs {
 	display: inline-flex;
@@ -6134,10 +6147,10 @@ body.is-composer-resizing .composer-resize-handle::after {
 .rpc-log-toolbar input {
 	flex: 1;
 	min-width: 0;
-	border: 1px solid #343b4a;
+	border: 1px solid var(--rpc-log-border);
 	border-radius: var(--radius-lg);
-	background: #141923;
-	color: #d5dae3;
+	background: var(--rpc-log-input-bg);
+	color: var(--rpc-log-strong);
 	padding: 6px 9px;
 	font-size: var(--font-size-caption);
 }
@@ -6149,7 +6162,7 @@ body.is-composer-resizing .composer-resize-handle::after {
 	font-size: var(--font-size-caption);
 }
 .rpc-log-entry-wrap {
-	border-bottom: 1px solid #252a33;
+	border-bottom: 1px solid var(--rpc-log-border);
 }
 .rpc-log-entry {
 	display: flex;
@@ -6160,16 +6173,16 @@ body.is-composer-resizing .composer-resize-handle::after {
 	cursor: pointer;
 }
 .rpc-log-entry:hover {
-	background: #252a33;
+	background: var(--color-bg-hover);
 }
 .rpc-log-entry.log-send {
-	color: #6cb6ff;
+	color: var(--rpc-log-send);
 }
 .rpc-log-entry.log-recv {
-	color: #8ddb8c;
+	color: var(--rpc-log-recv);
 }
 .rpc-log-entry time {
-	color: #4a5160;
+	color: var(--rpc-log-muted);
 	flex-shrink: 0;
 	font-size: var(--font-size-micro);
 }
@@ -6196,8 +6209,8 @@ body.is-composer-resizing .composer-resize-handle::after {
 .rpc-log-detail {
 	margin: 0;
 	padding: 8px 16px 8px 40px;
-	background: #111520;
-	color: #a0a8b8;
+	background: var(--rpc-log-detail-bg);
+	color: var(--rpc-log-detail-text);
 	font-size: var(--font-size-micro);
 	line-height: 1.5;
 	white-space: pre-wrap;
@@ -6206,7 +6219,7 @@ body.is-composer-resizing .composer-resize-handle::after {
 .rpc-log-empty {
 	padding: 40px;
 	text-align: center;
-	color: #4a5160;
+	color: var(--rpc-log-muted);
 }
 
 /* 调试按钮 */
