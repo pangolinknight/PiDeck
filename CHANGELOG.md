@@ -4,6 +4,35 @@
 
 All notable changes to PiDeck are documented here.
 
+## v0.5.0 - 2026-06-14
+
+### Added
+- LAN web service: Settings can now start a local HTTP service so devices on the same network can open PiDeck through the host machine's IP and configured port.
+- pi Extension management: the configuration modal now includes extension management alongside Models, Auth, Settings, Raw config, and Skills.
+- Git branch creation: the branch selector can create a new branch from the current branch without leaving PiDeck.
+- Project context action: project rows can be revealed directly in the system file manager.
+- VitePress documentation site and a full UI design audit, documenting the current desktop workbench architecture and design-system direction.
+
+### Improved
+- Major desktop shell refresh: the project sidebar, chat workspace, drawer, composer, splitters, context menus, and modal surfaces now use a shared semantic token system for typography, color, spacing, radius, focus, and motion.
+- Dark mode coverage is now much broader across the workspace, Settings, Config, Feedback, RPC logs, Codex import, image preview, message stream, tool calls, terminal dock, and confirmation dialogs.
+- Full-screen Settings, Config, and Feedback pages now fit the custom Electron titlebar better and avoid overlapping the PiDeck titlebar/brand area.
+- Sidebar workflows are clearer: recent project sessions are shown inline, left-click opens or reuses the session, right-click is reserved for management actions, and the agent-row close button was removed to reduce misclicks.
+- Session and agent context menus now focus on management actions; historical sessions can be renamed, copied, exported, inspected through RPC logs, or deleted from the sidebar menu.
+- Settings dropdowns now use a custom PiDeck-styled select component instead of native browser select popups.
+- Header actions are grouped by branch context, session actions, and panel toggles; the model/status chips have more breathing room and no longer feel clipped by the header divider.
+- Shared UI primitives now cover buttons, icon buttons, close buttons, text fields, and select fields, reducing visual drift across Settings, Config, Feedback, updates, environment checks, and import dialogs.
+- PiDeck branding, fonts, logo treatment, image preview overlays, picker palettes, and terminal typography have been refined for a more consistent desktop feel.
+- Localization coverage is much broader across workspace flows, configuration, settings, window controls, feedback, update prompts, RPC logs, model/thinking pickers, and low-frequency toasts.
+- Terminal Pi Soft now adapts to dark mode with a dedicated xterm palette.
+
+### Fixed
+- Composer arrow keys no longer accidentally trigger history navigation while editing text.
+- Windows pi shim startup keeps the expected Node runtime alignment.
+- Configuration modal crash boundaries and white-screen recovery were improved for unsupported or complex config shapes.
+- Codex-imported sessions now preserve their original timestamp for both created and updated times, keeping imported session ordering stable.
+- Settings and Config pages no longer overlap the custom titlebar PiDeck label when opened in the custom titlebar layout.
+
 ## v0.4.17 - 2026-06-11
 
 ### Added

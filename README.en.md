@@ -8,7 +8,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Electron](https://img.shields.io/badge/Electron-38-47848f)
 ![React](https://img.shields.io/badge/React-19-61dafb)
-![Version](https://img.shields.io/badge/version-0.4.17-green)
+![Version](https://img.shields.io/badge/version-0.5.0-green)
 
 `PiDeck` is **not** a fork of pi. It is a lightweight Electron shell that orchestrates multiple `pi --mode rpc` processes, providing a native desktop UI for projects, sessions, conversations, configuration, and tool orchestration — all powered by pi's native agent capabilities.
 
@@ -16,12 +16,12 @@
 
 ## 📋 Changelog
 
-> **Latest: v0.4.17** (2026-06-11)
+> **Latest: v0.5.0** (2026-06-14)
 
-### v0.4.17 Updates
-- 🧩 Skill management: the configuration modal now has a standalone Skills page for listing global skills, creating templates, toggling enablement, deleting skills, and opening skill folders.
-- 🛠️ pi path fallback: when automatic detection fails, users can enter a pi path manually; quoted paths, doubled backslashes, extension-less paths, and Windows `.cmd` paths with spaces are supported.
-- 🎨 UX polish: the Settings page now shows and validates the active pi path inline, while the Skill list and delete confirmation use the app's native list/dialog styling.
+### v0.5.0 Updates
+- 🎨 Major desktop refresh: the sidebar, header, composer, drawer, and Settings/Config/Feedback pages now share a stronger design-token system, with much broader dark-mode and localization coverage.
+- 🧭 Workflow upgrades: project rows show recent sessions inline, left-click opens or reuses sessions, right-click is reserved for management, and Git branch creation, project reveal, and session deletion are now available.
+- 🧩 Expanded capabilities: LAN web service, pi Extension management, PiDeck-styled custom selects, terminal dark-theme adaptation, and the full UI design audit documentation are now included.
 
 [View Full Changelog →](CHANGELOG.md)
 
@@ -33,12 +33,13 @@
 |---|---|
 | **Multi-Project Workspace** | Add, search, drag-sort, and switch between local project folders. Run multiple pi agents simultaneously with per-project isolation. |
 | **Built-in Chat Workspace** | A fixed Chat entry at the top of the project list writes to the app user-data directory for general conversations that do not need a code project. |
-| **Configuration & Skill Management** | Visual editors for pi's `models.json`, `auth.json`, and `settings.json`, plus global Skill management for listing, creating, enabling/disabling, deleting, and opening skill folders. |
+| **Configuration, Skill & Extension Management** | Visual editors for pi's `models.json`, `auth.json`, and `settings.json`, plus global Skill and Extension management. |
 | **Proxy Settings** | Manage pi agent process proxy and desktop proxy separately; model discovery and connection tests can use the desktop proxy. |
 | **Slash Commands & `!` Shell** | Built-in slash command suggestions (`/reload`, `/compact`, `/session`, …) and `!command` / `!!command` for inline shell execution directly in the chat composer. |
 | **Embedded Terminal Dock** | Agent-scoped terminal tabs with PowerShell/cmd/sh fallback, multiple tabs, theme switching, height resizing, right-click selection copy, and close-all confirmation. |
-| **Session Management** | Create new sessions, open project history modals, restore historical ones, rename sessions, export to HTML, and close agents — all from the project history button, sidebar, or context menu. |
-| **Git Integration** | Real-time branch display with local + remote branch selector, branch count badge, and switching support. |
+| **Session Management** | Create sessions, browse inline project history, restore historical sessions, rename, copy, export HTML, delete history, and close agents from the sidebar or context menus. |
+| **Git Integration** | Real-time branch display with local + remote branch selector, branch count badge, switching support, and branch creation. |
+| **LAN Web Service** | Start a local web service from Settings so devices on the same network can open PiDeck through the host IP and port. |
 | **Tool Call Visualization** | Grouped tool-call cards with summary and expandable details, clear status indicators for running/completed/failed calls. |
 | **Session File Summary** | Completed agent runs show a compact list of modified file names and changed line counts; more than three files can be expanded. |
 | **Context-Aware Input** | `@` file suggestions from project tree, `!` shell execution, `/` slash commands — all from a single composer. |
@@ -71,7 +72,7 @@ Built-in slash command suggestions panel with descriptions, alongside the sessio
 
 ![File tree and session actions](docs/images/files.png)
 
-Project file tree with Git status indicators, `@` file reference suggestions in the composer, current-session modified file list in the Files panel, and session context menu (Open · Export HTML · Close Agent).
+Project file tree with Git status indicators, `@` file reference suggestions in the composer, current-session modified file list in the Files panel, and session context menu actions (Rename · Copy · Export HTML · Delete · Close Agent).
 
 ---
 
