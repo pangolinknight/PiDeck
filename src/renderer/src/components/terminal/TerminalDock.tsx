@@ -159,8 +159,8 @@ export function TerminalDock(props: {
 
 		const terminal = new Terminal({
 			cursorBlink: true,
-			fontFamily: '"Cascadia Mono", Consolas, monospace',
-			fontSize: 12.5,
+			fontFamily: '"PiDeckCommitMono", "Cascadia Mono", Consolas, monospace',
+			fontSize: 13,
 			scrollback: 5000,
 			theme: theme.xterm,
 		});
