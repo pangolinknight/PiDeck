@@ -2076,7 +2076,7 @@ body.is-terminal-resizing .terminal-resize-handle::before {
 	width: 7px;
 	height: 7px;
 	border-radius: 999px;
-	background: #14b814;
+	background: var(--color-accent);
 	animation: typingPulse 1s infinite ease-in-out;
 }
 .typing-bubble span:nth-child(2) {
@@ -2120,11 +2120,11 @@ body.is-terminal-resizing .terminal-resize-handle::before {
 	overflow: hidden;
 }
 .tool-group.running {
-	border-color: rgba(183, 121, 31, 0.3);
+	border-color: color-mix(in srgb, var(--color-warning) 30%, var(--color-border-subtle));
 	background: color-mix(in srgb, var(--color-warning) 8%, var(--color-bg-panel));
 }
 .tool-group.error {
-	border-color: rgba(180, 35, 24, 0.26);
+	border-color: color-mix(in srgb, var(--color-danger) 26%, var(--color-border-subtle));
 	background: var(--color-danger-soft);
 }
 
@@ -2161,16 +2161,16 @@ body.is-terminal-resizing .terminal-resize-handle::before {
 	height: 8px;
 	border-radius: var(--radius-pill);
 	background: var(--color-accent);
-	box-shadow: 0 0 0 3px rgba(35, 134, 54, 0.12);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 12%, transparent);
 	flex: 0 0 auto;
 }
 .tool-group.running .tool-status-dot {
 	background: var(--color-warning);
-	box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.14);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-warning) 14%, transparent);
 }
 .tool-group.error .tool-status-dot {
 	background: var(--color-danger);
-	box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 14%, transparent);
 }
 .tool-group-title {
 	font-weight: 650;
@@ -2206,11 +2206,11 @@ body.is-terminal-resizing .terminal-resize-handle::before {
 	line-height: 1.35;
 }
 .tool-chip.running {
-	border-color: rgba(183, 121, 31, 0.35);
+	border-color: color-mix(in srgb, var(--color-warning) 35%, var(--color-border-subtle));
 	color: var(--color-warning);
 }
 .tool-chip.error {
-	border-color: rgba(180, 35, 24, 0.3);
+	border-color: color-mix(in srgb, var(--color-danger) 30%, var(--color-border-subtle));
 	color: var(--color-danger);
 }
 .tool-chip.muted {
@@ -2234,10 +2234,10 @@ body.is-terminal-resizing .terminal-resize-handle::before {
 	color: var(--color-text-secondary);
 }
 .tool-summary.running {
-	border-color: rgba(183, 121, 31, 0.35);
+	border-color: color-mix(in srgb, var(--color-warning) 35%, var(--color-border-subtle));
 }
 .tool-summary.error {
-	border-color: rgba(180, 35, 24, 0.3);
+	border-color: color-mix(in srgb, var(--color-danger) 30%, var(--color-border-subtle));
 	background: var(--color-danger-soft);
 }
 .tool-summary-main {
