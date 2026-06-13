@@ -15,6 +15,8 @@ import {
   ChevronRight,
   ChevronDown,
   Info,
+  PanelLeftClose,
+  PanelLeftOpen,
   Search,
   Play,
   Plus,
@@ -2510,6 +2512,10 @@ export function App() {
               projectAgents,
               expandedAgentProjects.has(project.id),
             );
+            const activeSessionShownAsAgent =
+              activeAgent?.projectId === project.id &&
+              activeAgent.sessionPath != null &&
+              agentDisplay.visibleAgents.some((agent) => agent.id === activeAgentId);
             const isDraggingProject = draggingProjectId === project.id;
             const isProjectDropTarget = dragOverProjectId === project.id;
             const projectRowClass = [
@@ -2673,7 +2679,8 @@ export function App() {
                       <button
                         key={session.filePath}
                         className={
-                          activeAgent?.sessionPath === session.filePath
+                          activeAgent?.sessionPath === session.filePath &&
+                          !activeSessionShownAsAgent
                             ? "conversation agent-row session-row active"
                             : "conversation agent-row session-row"
                         }
@@ -2759,7 +2766,11 @@ export function App() {
                 setListCollapsed((value) => !value);
               }}
             >
-              <LogoMark />
+              {listCollapsed ? (
+                <PanelLeftOpen size={18} strokeWidth={1.9} />
+              ) : (
+                <PanelLeftClose size={18} strokeWidth={1.9} />
+              )}
             </button>
           </div>
         )}
