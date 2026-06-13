@@ -91,6 +91,7 @@
 - 环境检测弹窗已增加四步 stepper：检测 CLI、确认路径、验证权限、完成，降低首次启动时的信息密度。
 - 终端 Dock 的主题选择已从常驻 select 收进更多菜单，仅保留新建、展开/收起和关闭等高频动作。
 - 终端 xterm 运行时字体已改用 PiDeck 等宽字体栈，并从半像素字号收敛到 13px。
+- CSS 已补充 PiDeck 品牌字体和展示等宽字体 token；Web 服务 Host/Port 短技术数值改用展示等宽字体。
 - `AGENTS.md` 已补充 UI 设计规范、公共组件抽象规则、自定义标题栏适配要求和 PiDeck 字体使用标准。
 - 全局交互态已增加统一 `focus-visible` 焦点环，搜索框、配置按钮和源文件选择器等控件补齐键盘焦点反馈；剩余 `transition: all` 已替换为具体属性，并支持系统 `prefers-reduced-motion`。
 - 已通过 `npm run typecheck`、`git diff --check`、`npm run build` 以及 renderer-only dev server 启动检查验证当前改动。
