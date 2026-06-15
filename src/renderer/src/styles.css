@@ -4939,6 +4939,8 @@ body.is-composer-resizing .composer-resize-handle::after {
 	padding: 1px 6px;
 	border-radius: var(--radius-xs);
 	font-weight: 500;
+	white-space: nowrap;
+	flex-shrink: 0;
 }
 
 .agent-status-indicator.status-running {

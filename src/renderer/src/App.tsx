@@ -3043,7 +3043,7 @@ export function App() {
                         <div className="conversation-body">
                           <div className="conversation-title">
                             <strong>{agent.title}</strong>
-                            {isActiveAgent && agent.status && (
+                            {agent.status && (
                               <span className={`agent-status-indicator status-${agent.status}`}>
                                 {agent.status === 'running' && '●'}
                                 {agent.status === 'idle' && '○'}
