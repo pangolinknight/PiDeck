@@ -6662,6 +6662,179 @@ body.is-composer-resizing .composer-resize-handle::after {
 	font-family: var(--font-family-mono);
 }
 
+/* Auth 使用指南 */
+.config-auth-guide {
+	margin: 0 0 16px;
+	padding: 16px;
+	background: var(--color-bg-subtle);
+	border-radius: var(--radius-md);
+	border: 1px solid var(--color-border-subtle);
+}
+.config-auth-guide-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 10px;
+}
+.config-auth-guide-header strong {
+	font-size: var(--font-size-base);
+	color: var(--color-text-primary);
+}
+.config-auth-guide-body {
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-caption);
+	line-height: 1.6;
+}
+.config-auth-guide-body ul {
+	margin: 8px 0;
+	padding-left: 20px;
+}
+.config-auth-guide-body li {
+	margin-bottom: 4px;
+}
+.config-auth-guide-note {
+	margin-top: 12px;
+	padding-top: 10px;
+	border-top: 1px solid var(--color-border-subtle);
+	color: var(--color-text-tertiary);
+}
+.config-auth-guide-note a {
+	color: var(--color-accent);
+	text-decoration: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+}
+
+/* Auth 供应商选择器 */
+.config-auth-selector {
+	margin: 0 0 16px;
+	padding: 16px;
+	background: var(--color-bg-panel);
+	border-radius: var(--radius-lg);
+	border: 1px solid var(--color-border-default);
+	box-shadow: 0 4px 12px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+}
+.config-auth-selector-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid var(--color-border-subtle);
+}
+.config-auth-selector-header strong {
+	font-size: var(--font-size-base);
+	color: var(--color-text-primary);
+}
+.config-auth-selector-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 6px;
+	max-height: 320px;
+	overflow-y: auto;
+}
+.config-auth-selector-item {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	padding: 10px 12px;
+	border: 1px solid var(--color-border-subtle);
+	border-radius: var(--radius-md);
+	background: var(--color-bg-muted);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	text-align: left;
+	font-size: var(--font-size-caption);
+}
+.config-auth-selector-item:hover {
+	border-color: var(--color-accent);
+	background: color-mix(in srgb, var(--color-accent) 5%, var(--color-bg-panel));
+}
+.config-auth-selector-item.selected {
+	border-color: var(--color-accent);
+	background: color-mix(in srgb, var(--color-accent) 10%, var(--color-bg-panel));
+	font-weight: 500;
+}
+.config-auth-selector-item.configured {
+	opacity: 0.6;
+}
+.config-auth-selector-name {
+	font-weight: 500;
+	color: var(--color-text-primary);
+}
+.config-auth-selector-id {
+	color: var(--color-text-tertiary);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-micro);
+	margin-top: 2px;
+}
+.config-auth-selector-badge {
+	margin-top: 4px;
+	padding: 1px 6px;
+	border-radius: var(--radius-xs);
+	background: var(--color-success-bg);
+	color: var(--color-success);
+	font-size: var(--font-size-micro);
+}
+.config-auth-selector-custom {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 12px;
+	padding-top: 10px;
+	border-top: 1px solid var(--color-border-subtle);
+}
+.config-auth-selector-custom span {
+	color: var(--color-text-tertiary);
+	font-size: var(--font-size-caption);
+	white-space: nowrap;
+}
+.config-auth-selector-custom input {
+	flex: 1;
+	height: 32px;
+	padding: 0 10px;
+	border: 1px solid var(--color-border-default);
+	border-radius: var(--radius-sm);
+	background: var(--color-bg-muted);
+	color: var(--color-text-primary);
+	font-size: var(--font-size-control);
+}
+.config-auth-selector-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 12px;
+	padding-top: 10px;
+	border-top: 1px solid var(--color-border-subtle);
+}
+.config-auth-selector-actions .config-btn {
+	flex-shrink: 0;
+}
+.config-auth-selector-info {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--color-text-tertiary);
+	font-size: var(--font-size-caption);
+}
+.config-auth-selector-info code {
+	padding: 1px 6px;
+	border-radius: var(--radius-xs);
+	background: var(--color-bg-hover);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-micro);
+}
+.config-auth-selector-info a {
+	color: var(--color-accent);
+	text-decoration: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	font-size: var(--font-size-micro);
+}
+
 .config-settings-list {
 	display: flex;
 	flex-direction: column;
