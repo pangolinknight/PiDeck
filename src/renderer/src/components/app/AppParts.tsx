@@ -327,6 +327,7 @@ export function ModelPicker(props: {
 	onPick: (model: AvailableModel) => void;
 }) {
 	const [modelPickerSearch, setModelPickerSearch] = useState("");
+	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 	const normalizedSearch = modelPickerSearch.trim().toLowerCase();
 	const currentModelKey = props.current?.provider && props.current?.modelId
 		? `${props.current.provider}/${props.current.modelId}`
@@ -396,8 +397,21 @@ export function ModelPicker(props: {
 					{sortedProviders.length > 0 ? (
 						sortedProviders.map((provider) => (
 							<div key={provider} className="model-group">
-								<div className="model-group-header">{provider}</div>
-								{groupedModels[provider].map((model) => {
+								<div
+									className={`model-group-header${collapsedGroups.has(provider) && !normalizedSearch ? ' collapsed' : ''}`}
+									onClick={() => {
+										setCollapsedGroups(prev => {
+											const next = new Set(prev);
+											if (next.has(provider)) next.delete(provider);
+											else next.add(provider);
+											return next;
+										});
+									}}
+								>
+									{provider}
+									<span className="model-group-count">{groupedModels[provider].length}</span>
+								</div>
+								{!(collapsedGroups.has(provider) && !normalizedSearch) && groupedModels[provider].map((model) => {
 									const modelKey = `${model.provider}/${model.id}`;
 									const selected = modelKey === currentModelKey;
 									return (

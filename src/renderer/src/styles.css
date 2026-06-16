@@ -5166,11 +5166,26 @@ body.is-composer-resizing .composer-resize-handle::after {
 	display: flex;
 	align-items: center;
 	gap: 6px;
+	cursor: pointer;
+	user-select: none;
+}
+.model-group-header:hover {
+	background: var(--color-bg-hover);
 }
 .model-group-header::before {
 	content: '▼';
 	font-size: 10px;
 	color: var(--color-text-tertiary);
+	transition: transform 0.15s;
+}
+.model-group-header.collapsed::before {
+	transform: rotate(-90deg);
+}
+.model-group-count {
+	font-size: var(--font-size-micro);
+	font-weight: 400;
+	color: var(--color-text-tertiary);
+	margin-left: auto;
 }
 .model-group .picker-palette-item {
 	margin-left: 10px;
