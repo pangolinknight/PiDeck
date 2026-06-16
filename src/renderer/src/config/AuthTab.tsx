@@ -148,16 +148,18 @@ export function AuthTab(props: {
 							);
 						})}
 					</div>
-					<div className="config-auth-selector-custom">
-						<span>{t("config.authCustomProvider")}</span>
-						<input
-							value={customProviderName}
-							onChange={(e) => {
-								setCustomProviderName(e.target.value);
-								if (e.target.value) setSelectedProvider("");
-							}}
-							placeholder={t("config.authCustomPlaceholder")}
-						/>
+					<div className="config-auth-selector-bottom">
+						<p className="config-auth-selector-custom-hint">
+							<span className="config-auth-selector-custom-label">{t("config.authCustomHint")}</span>
+							<input
+								value={customProviderName}
+								onChange={(e) => {
+									setCustomProviderName(e.target.value);
+									if (e.target.value) setSelectedProvider("");
+								}}
+								placeholder={t("config.authCustomPlaceholder")}
+							/>
+						</p>
 					</div>
 					<div className="config-auth-selector-actions">
 						{selectedProvider && presetProvider && (
