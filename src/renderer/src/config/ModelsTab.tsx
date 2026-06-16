@@ -517,18 +517,6 @@ export function ModelsTab(props: {
 											</div>
 										)}
 
-										<div className="config-form-row">
-											<label></label>
-											<button
-												className="config-btn blue"
-												onClick={() => props.onFetchModels(name)}
-												disabled={props.fetchingProvider === name}
-											>
-												{props.fetchingProvider === name
-													? t("config.fetchingModels")
-													: t("config.fetchModels")}
-											</button>
-										</div>
 
 										{/* 快速测试连接 */}
 										<div className="config-form-row">
@@ -696,6 +684,15 @@ export function ModelsTab(props: {
 										<div className="config-models-header">
 											<span>{t("config.modelList")}</span>
 											<div className="config-model-list-actions">
+																	<button
+																		className="config-btn small"
+																		onClick={() => props.onFetchModels(name)}
+																		disabled={props.fetchingProvider === name}
+																	>
+																		{props.fetchingProvider === name
+																			? t("config.fetchingModels")
+																			: t("config.fetchModels")}
+																	</button>
 												{props.fetchedModels[name] &&
 												props.fetchedModels[name].length > 0 &&
 												addingModelDropdown !== name && (
