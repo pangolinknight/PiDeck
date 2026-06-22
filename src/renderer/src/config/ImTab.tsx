@@ -412,6 +412,41 @@ export function ImTab(_props: Props) {
 									</div>
 								</div>
 								<div className="config-card-actions" onClick={(e) => e.stopPropagation()}>
+									{isThisConnected ? (
+										<button
+											className="config-btn small danger"
+											disabled={connecting}
+											onClick={async () => {
+												setConnecting(true);
+												try {
+													await api?.disconnect?.();
+													await loadData();
+												} finally {
+													setConnecting(false);
+												}
+											}}
+										>
+											{connecting ? t("config.im.connecting") : t("config.im.disconnect")}
+										</button>
+									) : (
+										<button
+											className="config-btn small primary"
+											disabled={connecting}
+											onClick={async () => {
+												setConnecting(true);
+												try {
+													await api?.connectByBot?.(bot.id);
+													await loadData();
+												} catch (e) {
+													setError(e instanceof Error ? e.message : String(e));
+												} finally {
+													setConnecting(false);
+												}
+											}}
+										>
+											{connecting ? t("config.im.connecting") : t("config.im.connect")}
+										</button>
+									)}
 									<button
 										className="config-btn"
 										onClick={() => {
@@ -450,68 +485,14 @@ export function ImTab(_props: Props) {
 														{copiedCredential === `secret:${bot.id}` ? t("common.copied") : t("common.copy")}
 													</button>
 													<button
-														className="config-btn small"
-														onClick={() => {
-															if (secretValue) {
-																setRevealedSecrets((prev) => {
-																	const next = { ...prev };
-																	delete next[bot.id];
-																	return next;
-																});
-															} else {
-															void handleRevealSecret(bot.id);
-															}
-														}}
-													>
-														{secretValue ? t("config.im.hideSecret") : t("config.im.revealSecret")}
-													</button>
+													className="config-btn small"
+													onClick={() => { if (secretValue) { setRevealedSecrets((prev) => { const next = { ...prev }; delete next[bot.id]; return next; }); } else { void handleRevealSecret(bot.id); } }}
+												>
+													{secretValue ? t("config.im.hideSecret") : t("config.im.revealSecret")}
+												</button>
 												</div>
 											</div>
 										</div>
-									</div>
-
-									<div className="config-im-bot-detail-section">
-										<div className="config-im-section-title">{t("config.im.connection")}</div>
-										{isThisConnected ? (
-											<div className="config-im-openid-line">
-												<span className="config-im-connected-badge">{t("config.im.connected")}</span>
-												<button
-													className="config-btn small danger"
-													disabled={connecting}
-													onClick={async () => {
-														setConnecting(true);
-														try {
-															await api?.disconnect?.();
-															await loadData();
-														} finally {
-															setConnecting(false);
-														}
-													}}
-												>
-													{connecting ? t("config.im.connecting") : t("config.im.disconnect")}
-												</button>
-											</div>
-										) : (
-											<div className="config-im-openid-line">
-												<button
-													className="config-btn primary small"
-													disabled={connecting}
-													onClick={async () => {
-														setConnecting(true);
-														try {
-															await api?.connectByBot?.(bot.id);
-															await loadData();
-														} catch (e) {
-															setError(e instanceof Error ? e.message : String(e));
-														} finally {
-															setConnecting(false);
-														}
-													}}
-												>
-													{connecting ? t("config.im.connecting") : t("config.im.connect")}
-												</button>
-											</div>
-										)}
 									</div>
 
 									<div className="config-im-bot-detail-section">
