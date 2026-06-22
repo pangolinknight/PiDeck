@@ -8,10 +8,10 @@
       /* 启动画面 CSS 内联在这里，确保 JS 和主 CSS 加载前画面就能正确渲染 */
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { overflow: hidden; background: #eef0f3; }
-      .root-loading { height: 100vh; display: grid; place-content: center; justify-items: center; gap: 10px; background: #eef0f3; }
+      .root-loading { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #eef0f3; }
       .root-loading-logo { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 14px; background: linear-gradient(145deg, #1a9e3c, #0d7a2a); box-shadow: 0 12px 28px rgba(26, 158, 60, 0.2); }
-      .root-loading strong { color: #1f2937; font-size: 16px; font-weight: 600; font-family: system-ui, -apple-system, sans-serif; }
-      .root-loading span { color: #6b7280; font-size: 13px; font-family: system-ui, -apple-system, sans-serif; }
+      .root-loading strong { color: #1f2937; font-size: 16px; font-weight: 600; font-family: system-ui, -apple-system, sans-serif; line-height: 1.4; }
+      .root-loading span { color: #6b7280; font-size: 13px; font-family: system-ui, -apple-system, sans-serif; line-height: 1.4; }
     </style>
   </head>
   <body>
