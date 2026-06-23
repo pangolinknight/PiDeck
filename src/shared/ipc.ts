@@ -25,6 +25,8 @@ export const ipcChannels = {
 	codexSessionsImport: "codex-sessions:import",
 	claudeSessionsScan: "claude-sessions:scan",
 	claudeSessionsImport: "claude-sessions:import",
+	openCodeSessionsScan: "opencode-sessions:scan",
+	openCodeSessionsImport: "opencode-sessions:import",
 	settingsGet: "settings:get",
 	settingsUpdate: "settings:update",
 	settingsTestPiProxy: "settings:test-pi-proxy",

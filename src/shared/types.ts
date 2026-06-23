@@ -185,6 +185,40 @@ export type ClaudeImportReport = {
 	failed: number;
 };
 
+export type OpenCodeImportStatus = "new" | "current" | "outdated";
+
+export type OpenCodeSessionSummary = {
+	id: string;
+	sourcePath: string;
+	targetPath: string;
+	cwd: string;
+	title: string;
+	preview: string;
+	createdAt: number;
+	updatedAt: number;
+	messageCount: number;
+	status: OpenCodeImportStatus;
+	sourceSize: number;
+	importedSourceMtime?: number;
+};
+
+export type OpenCodeImportResult = {
+	id: string;
+	sourcePath: string;
+	targetPath?: string;
+	title?: string;
+	success: boolean;
+	overwritten?: boolean;
+	messageCount?: number;
+	error?: string;
+};
+
+export type OpenCodeImportReport = {
+	results: OpenCodeImportResult[];
+	imported: number;
+	failed: number;
+};
+
 export type PiCommand = {
 	name: string;
 	description?: string;

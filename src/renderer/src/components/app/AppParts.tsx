@@ -45,6 +45,8 @@ import type {
 	CodexSessionSummary,
 	ClaudeImportReport,
 	ClaudeSessionSummary,
+	OpenCodeImportReport,
+	OpenCodeSessionSummary,
 	FileTreeNode,
 	GitBranchInfo,
 	ImageContent,
@@ -3075,6 +3077,7 @@ export function ProjectContextMenu(props: {
 	onRevealProject: () => void;
 	onImportCodexSessions: () => void;
 	onImportClaudeSessions: () => void;
+	onImportOpenCodeSessions: () => void;
 	onRemoveProject: () => void;
 }) {
 	return (
@@ -3090,6 +3093,9 @@ export function ProjectContextMenu(props: {
 				</button>
 				<button onClick={props.onImportClaudeSessions}>
 					{t("menu.importClaude")}
+				</button>
+				<button onClick={props.onImportOpenCodeSessions}>
+					{t("menu.importOpenCode")}
 				</button>
 				<button onClick={props.onRemoveProject}>{t("menu.removeProject")}</button>
 			</div>
@@ -3841,6 +3847,12 @@ function formatClaudeStatus(status: ClaudeSessionSummary["status"]) {
 	return t("claude.status.new");
 }
 
+function formatOpenCodeStatus(status: OpenCodeSessionSummary["status"]) {
+	if (status === "current") return t("opencode.status.current");
+	if (status === "outdated") return t("opencode.status.outdated");
+	return t("opencode.status.new");
+}
+
 export function ClaudeImportModal(props: {
 	project: Project;
 	sessions: ClaudeSessionSummary[];
@@ -3944,6 +3956,131 @@ export function ClaudeImportModal(props: {
 					<div className="codex-import-report">
 						<strong>
 							{t("claude.importDone", {
+								imported: props.report.imported,
+								failed: props.report.failed,
+							})}
+						</strong>
+						<div>
+							{props.report.results.map((result) => (
+								<span
+									key={result.sourcePath}
+									className={result.success ? "success" : "error"}
+									title={result.error || result.targetPath}
+								>
+									{result.success ? "✓" : "✗"} {result.title || result.sourcePath}
+								</span>
+							))}
+						</div>
+					</div>
+				)}
+			</section>
+		</div>
+	);
+}
+
+export function OpenCodeImportModal(props: {
+	project: Project;
+	sessions: OpenCodeSessionSummary[];
+	selectedPaths: string[];
+	loading: boolean;
+	importing: boolean;
+	report: OpenCodeImportReport | null;
+	onClose: () => void;
+	onRefresh: () => void;
+	onToggle: (sourcePath: string) => void;
+	onToggleAll: () => void;
+	onImport: () => void;
+}) {
+	const selected = new Set(props.selectedPaths);
+	const allSelected =
+		props.sessions.length > 0 &&
+		props.sessions.every((session) => selected.has(session.sourcePath));
+	return (
+		<div className="modal-backdrop">
+			<section className="codex-import-modal">
+				<div className="modal-header">
+					<div>
+						<strong>{t("opencode.title")}</strong>
+						<small>{props.project.name}</small>
+					</div>
+					<CloseIconButton
+						label={t("common.close")}
+						onClick={props.onClose}
+					/>
+				</div>
+				<div className="codex-import-toolbar">
+					<div>
+						<strong>{t("opencode.importCount", { count: props.sessions.length })}</strong>
+						<span>{displayPath(props.project.path)}</span>
+					</div>
+					<div className="codex-import-actions">
+						<button onClick={props.onRefresh} disabled={props.loading || props.importing}>
+							<RefreshCw size={14} />
+							{t("common.refresh")}
+						</button>
+						<button onClick={props.onToggleAll} disabled={props.sessions.length === 0}>
+							<Check size={14} />
+							{allSelected ? t("opencode.selectNone") : t("common.selectAll")}
+						</button>
+						<button
+							className="primary-action"
+							onClick={props.onImport}
+							disabled={props.importing || props.selectedPaths.length === 0}
+						>
+							<UploadCloud size={14} />
+							{props.importing
+								? t("opencode.importing")
+								: t("opencode.importSelected", {
+										count: props.selectedPaths.length,
+									})}
+						</button>
+					</div>
+				</div>
+				<div className="codex-import-body">
+					{props.loading ? (
+						<div className="history-loading">
+							<div className="loader" />
+							<span>{t("opencode.scanning")}</span>
+						</div>
+					) : props.sessions.length === 0 ? (
+						<div className="codex-import-empty">
+							<strong>{t("opencode.emptyTitle")}</strong>
+							<span>{t("opencode.emptyDesc")}</span>
+						</div>
+					) : (
+						<div className="codex-session-list">
+							{props.sessions.map((session) => (
+								<label key={session.sourcePath} className="codex-session-row">
+									<input
+										type="checkbox"
+										checked={selected.has(session.sourcePath)}
+										onChange={() => props.onToggle(session.sourcePath)}
+									/>
+									<div className="codex-session-main">
+										<div className="codex-session-title">
+											<strong>{session.title}</strong>
+											<span className={`codex-status ${session.status}`}>
+												{formatOpenCodeStatus(session.status)}
+											</span>
+										</div>
+										<p>{session.preview}</p>
+										<small>
+											{new Date(session.updatedAt).toLocaleString()} ·{" "}
+											{t("drawer.sessionMessages", {
+												count: session.messageCount,
+											})} ·{" "}
+											{formatBytes(session.sourceSize)}
+										</small>
+									</div>
+								</label>
+							))}
+						</div>
+					)}
+				</div>
+				{props.report && (
+					<div className="codex-import-report">
+						<strong>
+							{t("opencode.importDone", {
 								imported: props.report.imported,
 								failed: props.report.failed,
 							})}

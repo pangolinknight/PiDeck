@@ -63,6 +63,7 @@ import { testPiProxy } from "./pi/PiProxyTester";
 import { SessionScanner } from "./sessions/SessionScanner";
 import { CodexSessionImporter } from "./sessions/CodexSessionImporter";
 import { ClaudeSessionImporter } from "./sessions/ClaudeSessionImporter";
+import { OpenCodeSessionImporter } from "./sessions/OpenCodeSessionImporter";
 import { SettingsStore } from "./settings/SettingsStore";
 import { applyDesktopProxy } from "./settings/DesktopProxy";
 import { GitService } from "./git/GitService";
@@ -103,6 +104,7 @@ let fileSystemService: FileSystemService;
 let sessionScanner: SessionScanner;
 let codexSessionImporter: CodexSessionImporter;
 let claudeSessionImporter: ClaudeSessionImporter;
+let openCodeSessionImporter: OpenCodeSessionImporter;
 let settingsStore: SettingsStore;
 let gitService: GitService;
 let piLocator: PiLocator;
@@ -1077,6 +1079,22 @@ function registerIpc() {
 			return claudeSessionImporter.import(project.path, sourcePaths);
 		},
 	);
+	ipcMain.handle(
+		ipcChannels.openCodeSessionsScan,
+		async (_event, projectId: string) => {
+			const project = projectStore.get(projectId);
+			if (!project) throw new Error(`Project not found: ${projectId}`);
+			return openCodeSessionImporter.scan(project.path);
+		},
+	);
+	ipcMain.handle(
+		ipcChannels.openCodeSessionsImport,
+		async (_event, projectId: string, sourcePaths: string[]) => {
+			const project = projectStore.get(projectId);
+			if (!project) throw new Error(`Project not found: ${projectId}`);
+			return openCodeSessionImporter.import(project.path, sourcePaths);
+		},
+	);
 
 	ipcMain.handle(ipcChannels.gitBranches, async (_event, projectId: string) => {
 		const project = projectStore.get(projectId);
@@ -1606,6 +1624,7 @@ app.whenReady().then(async () => {
 	sessionScanner = new SessionScanner();
 	codexSessionImporter = new CodexSessionImporter();
 	claudeSessionImporter = new ClaudeSessionImporter();
+	openCodeSessionImporter = new OpenCodeSessionImporter();
 	settingsStore = new SettingsStore();
 	appLogger = new AppLogger();
 	gitService = new GitService();

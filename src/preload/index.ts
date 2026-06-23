@@ -16,6 +16,8 @@ import type {
 	CodexSessionSummary,
 	ClaudeImportReport,
 	ClaudeSessionSummary,
+	OpenCodeImportReport,
+	OpenCodeSessionSummary,
 	ConfigFileDiagnostic,
 	CreateAgentInput,
 	CreatePiSkillInput,
@@ -150,6 +152,18 @@ const api = {
 				projectId,
 				sourcePaths,
 			) as Promise<ClaudeImportReport>,
+	},
+	openCodeSessions: {
+		scan: (projectId: string) =>
+			ipcRenderer.invoke(ipcChannels.openCodeSessionsScan, projectId) as Promise<
+				OpenCodeSessionSummary[]
+			>,
+		import: (projectId: string, sourcePaths: string[]) =>
+			ipcRenderer.invoke(
+				ipcChannels.openCodeSessionsImport,
+				projectId,
+				sourcePaths,
+			) as Promise<OpenCodeImportReport>,
 	},
 	git: {
 		branches: (projectId: string) =>

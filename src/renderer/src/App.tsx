@@ -59,6 +59,7 @@ import {
   ChatBubble,
   CodexImportModal,
   ClaudeImportModal,
+  OpenCodeImportModal,
   ComposerToolbar,
   ConversationOutline,
   DrawerContent,
@@ -110,6 +111,8 @@ import type {
   CodexSessionSummary,
   ClaudeImportReport,
   ClaudeSessionSummary,
+  OpenCodeImportReport,
+  OpenCodeSessionSummary,
   FileTreeNode,
   GitBranchInfo,
   ImageContent,
@@ -414,6 +417,17 @@ export function App() {
   const [claudeImportRunning, setClaudeImportRunning] = useState(false);
   const [claudeImportReport, setClaudeImportReport] =
     useState<ClaudeImportReport | null>(null);
+  const [openCodeImportProject, setOpenCodeImportProject] = useState<Project | null>(
+    null,
+  );
+  const [openCodeImportSessions, setOpenCodeImportSessions] = useState<
+    OpenCodeSessionSummary[]
+  >([]);
+  const [openCodeImportSelected, setOpenCodeImportSelected] = useState<string[]>([]);
+  const [openCodeImportLoading, setOpenCodeImportLoading] = useState(false);
+  const [openCodeImportRunning, setOpenCodeImportRunning] = useState(false);
+  const [openCodeImportReport, setOpenCodeImportReport] =
+    useState<OpenCodeImportReport | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   // 历史命令相关状态
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
@@ -2027,6 +2041,88 @@ export function App() {
       );
     } finally {
       setClaudeImportRunning(false);
+    }
+  }
+
+  async function openOpenCodeImport(project: Project) {
+    setProjectMenu(null);
+    setOpenCodeImportProject(project);
+    setOpenCodeImportReport(null);
+    setOpenCodeImportSessions([]);
+    setOpenCodeImportSelected([]);
+    await scanOpenCodeSessions(project);
+  }
+
+  async function scanOpenCodeSessions(
+    project = openCodeImportProject,
+    clearReport = true,
+  ) {
+    if (!project) return;
+    setOpenCodeImportLoading(true);
+    if (clearReport) setOpenCodeImportReport(null);
+    try {
+      const next = await api.openCodeSessions.scan(project.id);
+      setOpenCodeImportSessions(next);
+      // OpenCode 导入会覆盖同名目标副本，默认不勾选，避免误覆盖用户已经导入过的历史。
+      setOpenCodeImportSelected([]);
+    } catch (error) {
+      showToast(
+        t("opencode.scanFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
+        4000,
+      );
+    } finally {
+      setOpenCodeImportLoading(false);
+    }
+  }
+
+  function toggleOpenCodeSession(sourcePath: string) {
+    setOpenCodeImportSelected((current) =>
+      current.includes(sourcePath)
+        ? current.filter((item) => item !== sourcePath)
+        : [...current, sourcePath],
+    );
+  }
+
+  function toggleAllOpenCodeSessions() {
+    const allPaths = openCodeImportSessions.map((session) => session.sourcePath);
+    setOpenCodeImportSelected((current) =>
+      allPaths.length > 0 && allPaths.every((path) => current.includes(path))
+        ? []
+        : allPaths,
+    );
+  }
+
+  async function importOpenCodeSessions() {
+    if (!openCodeImportProject || openCodeImportSelected.length === 0) return;
+    setOpenCodeImportRunning(true);
+    setOpenCodeImportReport(null);
+    try {
+      const report = await api.openCodeSessions.import(
+        openCodeImportProject.id,
+        openCodeImportSelected,
+      );
+      setOpenCodeImportReport(report);
+      await scanOpenCodeSessions(openCodeImportProject, false);
+      await refreshProjectSessions(openCodeImportProject.id);
+      if (sessionsProjectId === openCodeImportProject.id)
+        await refreshSessions(openCodeImportProject.id);
+      showToast(
+        t("opencode.importDone", {
+          imported: report.imported,
+          failed: report.failed,
+        }),
+      );
+    } catch (error) {
+      showToast(
+        t("opencode.importFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
+        4000,
+      );
+    } finally {
+      setOpenCodeImportRunning(false);
     }
   }
 
@@ -4246,6 +4342,7 @@ ${goalTextRef.current}
           }}
           onImportCodexSessions={() => openCodexImport(projectMenu.project)}
           onImportClaudeSessions={() => openClaudeImport(projectMenu.project)}
+          onImportOpenCodeSessions={() => openOpenCodeImport(projectMenu.project)}
           onRemoveProject={async () => {
             const project = projectMenu.project;
             setProjectMenu(null);
@@ -4564,6 +4661,24 @@ ${goalTextRef.current}
           onToggle={toggleClaudeSession}
           onToggleAll={toggleAllClaudeSessions}
           onImport={importClaudeSessions}
+        />
+      )}
+      {openCodeImportProject && (
+        <OpenCodeImportModal
+          project={openCodeImportProject}
+          sessions={openCodeImportSessions}
+          selectedPaths={openCodeImportSelected}
+          loading={openCodeImportLoading}
+          importing={openCodeImportRunning}
+          report={openCodeImportReport}
+          onClose={() => {
+            setOpenCodeImportProject(null);
+            setOpenCodeImportReport(null);
+          }}
+          onRefresh={() => scanOpenCodeSessions()}
+          onToggle={toggleOpenCodeSession}
+          onToggleAll={toggleAllOpenCodeSessions}
+          onImport={importOpenCodeSessions}
         />
       )}
       {sessionsProject && (
