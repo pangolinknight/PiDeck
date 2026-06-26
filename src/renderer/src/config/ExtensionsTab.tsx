@@ -221,7 +221,9 @@ export function ExtensionsTab(props: {
 					</div>
 				</div>
 				<div className="skills-list">
-					{props.data.extensions.length === 0 ? (
+					{props.loading ? (
+						<div className="config-loading">{t("config.loadingExtensions")}</div>
+					) : props.data.extensions.length === 0 ? (
 						<div className="config-empty">{t("config.emptyExtensions")}</div>
 					) : (
 						props.data.extensions.map((extension) => (
