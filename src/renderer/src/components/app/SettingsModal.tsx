@@ -190,9 +190,10 @@ export function SettingsModal(props: {
 	const lightBackgroundDisabled = props.settings.theme === "dark";
 
 	return (
-		<div className="modal-backdrop">
+		<div className="modal-backdrop" onClick={props.onClose}>
 			<div
 				className="settings-modal"
+				onClick={(e) => e.stopPropagation()}
 			>
 				<div className="modal-header">
 					<strong>{t("settings.title")}</strong>

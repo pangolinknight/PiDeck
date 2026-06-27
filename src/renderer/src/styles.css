@@ -4466,7 +4466,7 @@ body.is-composer-resizing .composer-resize-handle::after {
 .custom-titlebar-enabled .feedback-modal,
 .custom-titlebar-enabled .settings-modal,
 .custom-titlebar-enabled .config-modal {
-	height: 100%;
+	max-height: calc(100vh - 56px);
 }
 .context-backdrop {
 	position: fixed;
@@ -4474,14 +4474,13 @@ body.is-composer-resizing .composer-resize-handle::after {
 	z-index: 45;
 }
 .feedback-modal {
-	width: 100vw;
-	height: 100vh;
-	max-height: none;
+	width: min(1300px, calc(100vw - 48px));
+	height: min(850px, calc(100vh - 48px));
 	display: flex;
 	flex-direction: column;
-	border-radius: 0;
+	border-radius: var(--radius-lg);
 	background: var(--color-bg-panel);
-	box-shadow: none;
+	box-shadow: var(--shadow-xl);
 	overflow: hidden;
 }
 .modal-header.feedback-header {
@@ -5055,15 +5054,13 @@ body.is-composer-resizing .composer-resize-handle::after {
 	}
 }
 .settings-modal {
-	width: 100vw;
-	height: 100vh;
-	min-height: 0;
-	max-height: none;
+	width: min(1300px, calc(100vw - 48px));
+	height: min(850px, calc(100vh - 48px));
 	display: flex;
 	flex-direction: column;
-	border-radius: 0;
+	border-radius: var(--radius-lg);
 	background: var(--color-bg-panel);
-	box-shadow: none;
+	box-shadow: var(--shadow-xl);
 	overflow: hidden;
 }
 .settings-layout {
@@ -5998,14 +5995,13 @@ body.is-composer-resizing .composer-resize-handle::after {
 /* ── 配置管理弹窗 ─────────────────────────────────── */
 
 .config-modal {
-	width: 100vw;
-	height: 100vh;
-	max-height: none;
+	width: min(1300px, calc(100vw - 48px));
+	height: min(850px, calc(100vh - 48px));
 	display: flex;
 	flex-direction: column;
-	border-radius: 0;
+	border-radius: var(--radius-lg);
 	background: var(--color-bg-panel);
-	box-shadow: none;
+	box-shadow: var(--shadow-xl);
 	overflow: hidden;
 }
 

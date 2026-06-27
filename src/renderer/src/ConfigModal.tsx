@@ -127,8 +127,8 @@ class ConfigModalErrorBoundary extends Component<
 		if (!this.state.error) return this.props.children;
 		if (!this.props.open) return null;
 		return (
-			<div className="modal-backdrop">
-				<div className="config-modal">
+			<div className="modal-backdrop" onClick={this.props.onClose}>
+				<div className="config-modal" onClick={(e) => e.stopPropagation()}>
 					<div className="modal-header">
 						<strong>{t("config.loadFailed")}</strong>
 						<CloseIconButton
@@ -904,8 +904,8 @@ function ConfigModalContent(props: ConfigModalProps) {
 	if (!open) return null;
 
 	return (
-		<div className="modal-backdrop">
-			<div className="config-modal">
+		<div className="modal-backdrop" onClick={onClose}>
+			<div className="config-modal" onClick={(e) => e.stopPropagation()}>
 				<div className="modal-header">
 					<strong>{t("config.title")}</strong>
 					<div className="modal-header-actions">
