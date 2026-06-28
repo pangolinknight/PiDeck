@@ -6935,6 +6935,14 @@ a.config-btn {
 	grid-column: 2;
 }
 
+/* config-combobox 在 form-row 右侧列保持 padding-right 以避开切换按钮 */
+.config-form-row .config-combobox {
+	grid-column: 2;
+}
+.config-form-row .config-combobox input {
+	padding-right: 38px;
+}
+
 .config-secret-input {
 	display: flex;
 	gap: 6px;
@@ -7402,6 +7410,25 @@ a.config-btn {
 	max-height: 320px;
 	overflow-y: auto;
 }
+/* 服务商选择器中来自 models.json 的分隔线 */
+.config-auth-selector-separator {
+	grid-column: 1 / -1;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 0;
+	font-size: var(--font-size-micro);
+	color: var(--color-text-tertiary);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+.config-auth-selector-separator::before,
+.config-auth-selector-separator::after {
+	content: "";
+	flex: 1;
+	height: 1px;
+	background: var(--color-border-subtle);
+}
 .config-auth-selector-item {
 	display: flex;
 	flex-direction: column;
@@ -7566,6 +7593,17 @@ a.config-btn {
 	outline: none;
 	border-color: var(--color-accent);
 	box-shadow: var(--focus-ring);
+}
+
+/* Settings 行内 combobox：复用 config-combobox 样式，适配 settings-row 布局 */
+.config-settings-combobox {
+	flex: 1;
+	min-width: 0;
+}
+
+.config-settings-combobox-menu {
+	/* 覆盖默认 combobox-menu 的 top 定位，使其在 settings-row 内正确展开 */
+	top: calc(100% + 2px);
 }
 
 .config-checkbox-label {

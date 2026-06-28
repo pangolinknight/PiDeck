@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Copy, ExternalLink, Trash2 } from "lucide-react";
 import { t } from "../i18n";
-import type { AuthFile } from "./configTypes";
-import { SecretInput } from "./ConfigShared";
+import type { AuthFile, ModelsFile } from "./configTypes";
+import { ConfigComboboxInput, SecretInput } from "./ConfigShared";
 
 // 根据 pi 官方文档支持的供应商列表 (https://pi.dev/docs/latest/providers#auth-file)
 const PRESET_PROVIDERS = [
@@ -37,12 +37,22 @@ const PRESET_PROVIDERS = [
 	{ value: "xiaomi-token-plan-sgp", label: "Xiaomi MiMo Token (Singapore)", env: "XIAOMI_TOKEN_PLAN_SGP_API_KEY", url: "" },
 ];
 
+// 认证类型选项，用于 type 字段的下拉选择
+const AUTH_TYPE_OPTIONS = [
+	{ value: "api_key", label: "api_key" },
+	{ value: "oauth2", label: "oauth2" },
+	{ value: "bearer", label: "bearer" },
+	{ value: "basic", label: "basic" },
+];
+
 export function AuthTab(props: {
 	data: AuthFile;
 	expandedAuth: string | null;
 	addingAuth: boolean;
 	newAuthName: string;
 	saving: boolean;
+	/** 已配置的模型/服务商数据，用于 provider / model 下拉选项 */
+	modelsData?: ModelsFile;
 	onToggleAuth: (name: string) => void;
 	onStartAddAuth: () => void;
 	onCancelAddAuth: () => void;
@@ -182,6 +192,32 @@ export function AuthTab(props: {
 								</button>
 							);
 						})}
+						{/* 从 models.json 读取已配置的服务商 */}
+						{props.modelsData && Object.keys(props.modelsData.providers).length > 0 && (
+							<>
+								<div className="config-auth-selector-separator">
+									<span>{t("config.authFromModels")}</span>
+								</div>
+								{Object.keys(props.modelsData.providers).map((providerName) => {
+									const alreadyConfigured = providers.includes(providerName);
+									return (
+										<button
+											key={providerName}
+											className={`config-auth-selector-item${selectedProvider === providerName ? " selected" : ""}${alreadyConfigured ? " configured" : ""}`}
+											onClick={() => {
+												setSelectedProvider(providerName);
+											}}
+										>
+											<span className="config-auth-selector-name">{providerName}</span>
+											<span className="config-auth-selector-id">{t("config.fromModels")}</span>
+											{alreadyConfigured && (
+												<span className="config-auth-selector-badge">{t("config.configured")}</span>
+											)}
+										</button>
+									);
+								})}
+							</>
+						)}
 					</div>
 					<div className="config-auth-selector-bottom">
 						<p className="config-auth-selector-custom-hint">
@@ -296,10 +332,11 @@ export function AuthTab(props: {
 								<div className="config-provider-form">
 									<div className="config-form-row">
 										<label>{t("config.field.type")}</label>
-										<input
+										<ConfigComboboxInput
 											value={auth.type ?? "api_key"}
-											onChange={(e) =>
-												props.onUpdate(name, "type", e.target.value)
+											options={AUTH_TYPE_OPTIONS}
+											onChange={(v) =>
+												props.onUpdate(name, "type", v)
 											}
 										/>
 									</div>
@@ -308,6 +345,28 @@ export function AuthTab(props: {
 										<SecretInput
 											value={auth.key ?? ""}
 											onChange={(v) => props.onUpdate(name, "key", v)}
+										/>
+									</div>
+									<div className="config-form-row">
+										<label>{t("config.field.model")}</label>
+										<ConfigComboboxInput
+											value={typeof auth.model === "string" ? auth.model : ""}
+											options={(() => {
+												const modelOptions: Array<{ value: string; label?: string }> = [];
+												if (props.modelsData) {
+													for (const [pName, provider] of Object.entries(props.modelsData.providers)) {
+														for (const model of provider.models) {
+															const label = model.name && model.name !== model.id
+																? `${model.name} (${pName})`
+																: `${model.id} (${pName})`;
+															modelOptions.push({ value: model.id, label });
+														}
+													}
+												}
+												return modelOptions;
+											})()}
+											onChange={(v) => props.onUpdate(name, "model", v)}
+											placeholder={t("config.settings.selectModel")}
 										/>
 									</div>
 								</div>

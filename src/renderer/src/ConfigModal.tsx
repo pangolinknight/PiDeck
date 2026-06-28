@@ -20,7 +20,7 @@ import type {
 	SettingsFile,
 } from "./config/configTypes";
 import type { ConfigFileDiagnostic, PiExtensionListResult, PiExtensionSummary, PiSkillListResult, PiSkillLocation, PiSkillSummary } from "../../shared/types";
-import { getProviderHeaders } from "./config/providerHeaders";
+import { getProviderHeaders, KNOWN_PROVIDER_ENDPOINTS } from "./config/providerHeaders";
 
 const api: PiDesktopApi = (window as unknown as { piDesktop: PiDesktopApi })
 	.piDesktop;
@@ -57,8 +57,13 @@ function normalizeModelsFile(value: unknown): ModelsFile {
 		providers[name] = {
 			...provider,
 			models: Array.isArray(rawModels)
-				? rawModels.filter((model): model is ModelItem =>
-						Boolean(model) && typeof model === "object" && !Array.isArray(model),
+				? rawModels
+					.filter((model): model is ModelItem | string =>
+						Boolean(model) &&
+						(typeof model === "object" && !Array.isArray(model) || typeof model === "string"),
+					)
+					.map((model) =>
+						typeof model === "string" ? { id: model } : model,
 					)
 				: [],
 		};
@@ -181,6 +186,10 @@ function ConfigModalContent(props: ConfigModalProps) {
 	const [modelsData, setModelsData] = useState<ModelsFile>({ providers: {} });
 	const [authData, setAuthData] = useState<AuthFile>({});
 	const [settingsData, setSettingsData] = useState<SettingsFile>({});
+	/** 自动发现的模型：auth-only 供应商通过已知端点获取的模型列表 */
+	const [discoveredModels, setDiscoveredModels] = useState<
+		Record<string, Array<{ id: string; name?: string }>>
+	>({});
 	const [trustData, setTrustData] = useState<Record<string, boolean>>({});
 	const [skillsData, setSkillsData] = useState<PiSkillListResult>({
 		locations: [],
@@ -290,11 +299,71 @@ function ConfigModalContent(props: ConfigModalProps) {
 					setRawFileName("auth.json");
 					setConfigDiagnostic(res.diagnostic ?? null);
 				} else if (target === "settings") {
-					const res = await api.config.getSettings();
-					setSettingsData(res.parsed as SettingsFile);
-					setRawContent(res.raw);
+					// 同时加载 settings、auth 和 models 数据，确保 defaultProvider / defaultModel 下拉能聚合所有可用信息
+					const [settingsRes, authRes, modelsRes] = await Promise.all([
+						api.config.getSettings(),
+						api.config.getAuth(),
+						api.config.getModels(),
+					]);
+					setSettingsData(settingsRes.parsed as SettingsFile);
+					setAuthData(authRes.parsed as AuthFile);
+					setModelsData(normalizeModelsFile(modelsRes.parsed));
+					setRawContent(settingsRes.raw);
 					setRawFileName("settings.json");
-					setConfigDiagnostic(res.diagnostic ?? null);
+					setConfigDiagnostic(settingsRes.diagnostic ?? null);
+
+					// 对于 auth 中有但 models 中没有模型的供应商，自动尝试获取模型列表
+					const authProviders = authRes.parsed as AuthFile;
+					const modelsProviders = normalizeModelsFile(modelsRes.parsed).providers;
+					const discovered: Record<string, Array<{ id: string; name?: string }>> = {};
+					const fetchPromises: Array<Promise<void>> = [];
+
+					for (const [providerName, authEntry] of Object.entries(authProviders)) {
+						// 跳过已有模型的供应商
+						if (modelsProviders[providerName]?.models?.length) continue;
+						const apiKey =
+							typeof authEntry.key === "string" ? authEntry.key : "";
+						if (!apiKey) continue;
+
+						// 情况1：从 KNOWN_PROVIDER_ENDPOINTS 获知该供应商的 API 端点
+						const knownEndpoint = KNOWN_PROVIDER_ENDPOINTS[providerName];
+						// 情况2：从 models.json 中该供应商的配置获知 baseUrl
+						const modelsProvider = modelsProviders[providerName];
+						const modelsBaseUrl =
+							modelsProvider && typeof modelsProvider.baseUrl === "string"
+								? modelsProvider.baseUrl
+								: undefined;
+						const baseUrl = knownEndpoint?.baseUrl ?? modelsBaseUrl;
+						if (!baseUrl) continue;
+
+						const apiType =
+							knownEndpoint?.apiType ??
+							(typeof modelsProvider?.api === "string"
+								? modelsProvider.api
+								: undefined);
+
+						fetchPromises.push(
+							api.config
+								.fetchModels(baseUrl, apiKey, apiType)
+								.then((result) => {
+									if (result.success && result.models) {
+										discovered[providerName] = result.models;
+									}
+								})
+								.catch(() => {
+									// 静默失败，不阻塞 UI
+								}),
+						);
+					}
+
+					if (fetchPromises.length > 0) {
+						// 不 await，在后台获取后更新状态即可
+						void Promise.allSettled(fetchPromises).then(() => {
+							if (Object.keys(discovered).length > 0) {
+								setDiscoveredModels(discovered);
+							}
+						});
+					}
 				} else if (target === "trust") {
 					const res = await api.config.getTrust();
 					setTrustData(res.parsed as Record<string, boolean>);
@@ -1064,6 +1133,7 @@ function ConfigModalContent(props: ConfigModalProps) {
 							addingAuth={addingAuth}
 							newAuthName={newAuthName}
 							saving={saving}
+							modelsData={modelsData}
 							onToggleAuth={(name) =>
 								setExpandedAuth(expandedAuth === name ? null : name)
 							}
@@ -1086,6 +1156,9 @@ function ConfigModalContent(props: ConfigModalProps) {
 						<SettingsTab
 							data={settingsData}
 							saving={saving}
+							modelsData={modelsData}
+							authData={authData}
+							discoveredModels={discoveredModels}
 							onChange={setSettingsData}
 							onSave={handleSaveSettings}
 						/>
