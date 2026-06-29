@@ -637,7 +637,9 @@ export function ModelPicker(props: {
 									});
 								}}
 							>
-								<span className={`model-favorites-arrow${collapsedGroups.has('__favorites__') ? ' collapsed' : ''}`}>★</span>
+								<span className={`model-favorites-arrow${collapsedGroups.has('__favorites__') ? ' collapsed' : ''}`}>
+									<Star size={14} strokeWidth={1.8} fill='currentColor' />
+								</span>
 								{t("app.modelFavorites")}
 								<span className="model-group-count">{favorites.length}</span>
 							</div>

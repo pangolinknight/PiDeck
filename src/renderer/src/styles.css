@@ -5509,9 +5509,12 @@ body.is-composer-resizing .composer-resize-handle::after {
 }
 
 .model-favorites-arrow {
-	display: inline-block;
-	font-size: 13px;
-	line-height: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	color: var(--color-warning);
 	transition: transform 0.15s;
 }
 
