@@ -30,6 +30,7 @@ import {
   Minus,
   Globe,
   Pin,
+  Pencil,
   Square,
   Filter,
   X,
@@ -55,6 +56,8 @@ import {
 } from "./terminalDockState";
 import { useMessagePagination } from "./hooks/useMessagePagination";
 import { useSessionLoader } from "./hooks/useSessionLoader";
+import { useScratchPad } from "./hooks/useScratchPad";
+import { ScratchPadPanel } from "./components/scratchPad/ScratchPadPanel";
 import { LazyWrapper } from "./hooks/useLazyComponent";
 import {
   AgentContextMenu,
@@ -656,6 +659,7 @@ export function App() {
   // ===== 飞书桥接 =====
 
   const feishu = useFeishuBridge();
+  const scratchPad = useScratchPad();
 
   // 当活跃 Agent 切换或绑定列表变更时，加载该 Agent 指定的飞书 Bot
   // 绑定变更后同步刷新，确保配置页断开关联后已连接状态正确反映。
@@ -1150,6 +1154,27 @@ export function App() {
       offThinking();
     };
   }, []);
+
+  // 全局快捷键：Cmd/Ctrl+Shift+S 呼出/收起草稿本；Esc 关闭
+  const scratchPadToggle = scratchPad.toggle;
+  const scratchPadClose = scratchPad.close;
+  const scratchPadIsOpen = scratchPad.isOpen;
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const isSaveShortcut = (e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "s";
+      if (isSaveShortcut) {
+        e.preventDefault();
+        scratchPadToggle();
+        return;
+      }
+      if (e.key === "Escape" && scratchPadIsOpen) {
+        e.stopPropagation();
+        scratchPadClose();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [scratchPadToggle, scratchPadClose, scratchPadIsOpen]);
 
   // 桌面宠物点击跳转：主进程通知激活某 Agent，切到对应 project + agent tab
   useEffect(() => {
@@ -4110,6 +4135,13 @@ ${goalTextRef.current}
             className={`chat-header-actions${activeAgent?.status === "starting" ? " loading" : ""}`}
           >
             <>
+              <button
+                className={scratchPad.isOpen ? "active scratch-pad-btn" : "scratch-pad-btn"}
+                onClick={() => scratchPad.toggle()}
+                title={t("scratchPad.openTooltip")}
+              >
+                <Pencil size={15} />
+              </button>
               <div className="header-action-group branch-group">
                 {!isLanWeb && (
                   <BranchSelector
@@ -5278,6 +5310,23 @@ ${goalTextRef.current}
           </div>
         </div>
       )}
+
+      {/* Scratch Pad（草稿本）：根级渲染，避免受 chat-pane grid 影响定位 */}
+      {scratchPad.isOpen || scratchPad.isClosing ? (
+        <div className="scratch-pad-overlay" onClick={() => scratchPad.close()}>
+          <ScratchPadPanel
+            content={scratchPad.content}
+            mode={scratchPad.mode}
+            isClosing={scratchPad.isClosing}
+            isSaving={scratchPad.isSaving}
+            hasError={scratchPad.hasError}
+            onChangeContent={scratchPad.setContent}
+            onSetMode={scratchPad.setMode}
+            onExport={() => void scratchPad.exportFile()}
+            onClose={() => scratchPad.close()}
+          />
+        </div>
+      ) : null}
 
     </div>
   );

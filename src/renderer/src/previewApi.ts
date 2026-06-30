@@ -609,5 +609,10 @@ export function createPreviewApi(): PiDesktopApi {
 			sessionBotGet: async () => null,
 			sessionBotSet: async () => {},
 		},
+		scratchPad: {
+			load: async () => ({ content: "", lastEditedAt: 0, cursorPosition: 0 }),
+			save: async () => undefined,
+			export: async () => false,
+		},
 	};
 }

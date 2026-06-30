@@ -665,6 +665,12 @@ export type FeishuChatBinding = {
 	createdAt: number;
 };
 
+export type ScratchPadData = {
+	content: string;
+	lastEditedAt: number;
+	cursorPosition: number;
+};
+
 export type FeishuChatMessage = {
 	chatId: string;
 	messageId: string;
