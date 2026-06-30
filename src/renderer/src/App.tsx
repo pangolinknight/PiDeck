@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  Code,
   Info,
   MessageSquare,
   PanelLeftClose,
@@ -28,11 +29,13 @@ import {
   Plus,
   Trash2,
   Minus,
+  FolderOpen,
   Globe,
   Pin,
   Pencil,
   Square,
   Filter,
+  Terminal,
   X,
 } from "lucide-react";
 import { createPreviewApi } from "./previewApi";
@@ -271,19 +274,6 @@ function resolveFileLinkPath(path: string, basePath?: string) {
   return `${basePath.replace(/[\\/]+$/, "")}${separator}${path.replace(/^[\\/]+/, "")}`;
 }
 
-const EDITOR_LOGO_URLS: Record<string, string> = {
-  vscode: new URL("./assets/editors/vscode.png", import.meta.url).href,
-  cursor: new URL("./assets/editors/cursor.ico", import.meta.url).href,
-  zed: new URL("./assets/editors/zed.png", import.meta.url).href,
-  idea: new URL("./assets/editors/idea.svg", import.meta.url).href,
-  webstorm: new URL("./assets/editors/webstorm.svg", import.meta.url).href,
-  phpstorm: new URL("./assets/editors/phpstorm.svg", import.meta.url).href,
-  pycharm: new URL("./assets/editors/pycharm.svg", import.meta.url).href,
-};
-
-function getEditorLogoUrl(editorId: string) {
-  return EDITOR_LOGO_URLS[editorId];
-}
 
 function isReplacementForPendingAgent(agent: AgentTab, pending: AgentTab) {
   if (!pending.id.startsWith("pending-")) return false;
@@ -299,6 +289,20 @@ function isReplacementForPendingAgent(agent: AgentTab, pending: AgentTab) {
 
 function isPendingAgentId(agentId?: string) {
   return Boolean(agentId?.startsWith("pending-"));
+}
+
+const EDITOR_LOGO_URLS: Record<string, string> = {
+  vscode: new URL("./assets/editors/vscode.png", import.meta.url).href,
+  cursor: new URL("./assets/editors/cursor.ico", import.meta.url).href,
+  zed: new URL("./assets/editors/zed.png", import.meta.url).href,
+  idea: new URL("./assets/editors/idea.svg", import.meta.url).href,
+  webstorm: new URL("./assets/editors/webstorm.svg", import.meta.url).href,
+  phpstorm: new URL("./assets/editors/phpstorm.svg", import.meta.url).href,
+  pycharm: new URL("./assets/editors/pycharm.svg", import.meta.url).href,
+};
+
+function getEditorLogoUrl(editorId: string) {
+  return EDITOR_LOGO_URLS[editorId];
 }
 
 function migrateAgentRecord<T>(
@@ -356,7 +360,6 @@ export function App() {
     Record<string, AgentRuntimeState>
   >({});
   const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
-  const [externalEditors, setExternalEditors] = useState<ExternalEditor[]>([]);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const [thinkingPickerOpen, setThinkingPickerOpen] = useState(false);
   const [sendBehaviorMenuOpen, setSendBehaviorMenuOpen] = useState(false);
@@ -364,7 +367,6 @@ export function App() {
     string | undefined
   >(undefined);
   const [sessionActionsOpen, setSessionActionsOpen] = useState(false);
-  const [fileActionsOpen, setFileActionsOpen] = useState(false);
   const [switchingBranch, setSwitchingBranch] = useState<string | null>(null);
   const [promptByAgent, setPromptByAgent] = useState<Record<string, string>>(
     {},
@@ -375,6 +377,23 @@ export function App() {
     Record<string, ImageContent[]>
   >({});
   const [previewImage, setPreviewImage] = useState<ImageContent | null>(null);
+  /** 外部编辑器列表 + 弹出气泡状态 */
+  const [externalEditors, setExternalEditors] = useState<ExternalEditor[]>([]);
+  const [editorsOpen, setEditorsOpen] = useState(false);
+  const [editorsAnchor, setEditorsAnchor] = useState<{ x: number; y: number } | null>(null);
+  const editorsRef = useRef<HTMLDivElement>(null);
+
+  // 点击编辑器气泡外部时关闭
+  useEffect(() => {
+    if (!editorsOpen) return;
+    const handler = (event: MouseEvent) => {
+      if (editorsRef.current && !editorsRef.current.contains(event.target as Node)) {
+        setEditorsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [editorsOpen]);
   /** Goal 状态 */
   const [goalText, setGoalText] = useState<string>("");
   const goalTextRef = useRef("");
@@ -646,7 +665,6 @@ export function App() {
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const chatPaneRef = useRef<HTMLElement | null>(null);
   const sessionComboRef = useRef<HTMLDivElement | null>(null);
-  const fileActionsRef = useRef<HTMLDivElement | null>(null);
   const chatHeaderRef = useRef<HTMLElement | null>(null);
   const composerRef = useRef<HTMLElement | null>(null);
   const timelineRef = useRef<HTMLElement | null>(null);
@@ -977,7 +995,7 @@ export function App() {
   useEffect(() => {
     window.setTimeout(() => void refreshProjects(), 0);
     window.setTimeout(() => void api.agents.list().then(setAgents), 0);
-    void api.editors.list().then(setExternalEditors).catch(() => setExternalEditors([]));
+    void api.editors.list().then(setExternalEditors).catch(() => undefined);
     void api.app
       .info()
       .then(setAppInfo)
@@ -1547,17 +1565,6 @@ export function App() {
     return () => document.removeEventListener("mousedown", handler);
   }, [sessionActionsOpen]);
 
-  useEffect(() => {
-    if (!fileActionsOpen) return;
-    void api.editors.list().then(setExternalEditors).catch(() => setExternalEditors([]));
-    const handler = (event: MouseEvent) => {
-      if (fileActionsRef.current && !fileActionsRef.current.contains(event.target as Node)) {
-        setFileActionsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [fileActionsOpen]);
 
   useEffect(() => {
     for (const agent of displayAgents) {
@@ -4228,77 +4235,6 @@ ${goalTextRef.current}
                   )}
                 </div>
               </div>
-              <div className="header-action-group panel-group">
-                {!isLanWeb && (
-                  <>
-                    <div className="file-action-combo" ref={fileActionsRef}>
-                      <button
-                        className={drawer === "files" ? "active file-action-trigger" : "file-action-trigger"}
-                        disabled={isAgentStarting}
-                        onClick={() => setFileActionsOpen((open) => !open)}
-                        title={t("app.files")}
-                      >
-                        <span className="session-combo-label">{t("app.files")}</span>
-                        <span className={`session-combo-chevron${fileActionsOpen ? " open" : ""}`}>
-                          <ChevronDown size={12} />
-                        </span>
-                      </button>
-                      {fileActionsOpen && (
-                        <div className="file-action-menu">
-                          <button
-                            onClick={() => {
-                              setDrawerCollapsed(false);
-                              openDrawer("files");
-                              setFileActionsOpen(false);
-                            }}
-                          >
-                            <span>{t("app.showInSidebar")}</span>
-                          </button>
-                          {externalEditors.map((editor) => (
-                            <button
-                              key={editor.id}
-                              disabled={!(activeAgent?.cwd || (activeProject && !isChatProject(activeProject) ? activeProject.path : undefined))}
-                              onClick={() => {
-                                const projectPath = activeAgent?.cwd || (activeProject && !isChatProject(activeProject) ? activeProject.path : undefined);
-                                if (!projectPath) return;
-                                setFileActionsOpen(false);
-                                void api.editors.openProject(editor, projectPath).catch((error) => {
-                                  showToast(
-                                    t("app.openEditorFailed", {
-                                      error: error instanceof Error ? error.message : String(error),
-                                    }),
-                                    3000,
-                                  );
-                                });
-                              }}
-                            >
-                              <span className={`editor-logo ${editor.id}`}>
-                                {getEditorLogoUrl(editor.id) ? (
-                                  <img src={getEditorLogoUrl(editor.id)} alt="" />
-                                ) : (
-                                  editor.id.slice(0, 2).toUpperCase()
-                                )}
-                              </span>
-                              <span>{editor.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      className={terminalOpen ? "active" : ""}
-                      disabled={!activeAgentId || isAgentStarting}
-                      onClick={() => {
-                        if (!activeAgentId) return;
-                        setTerminalOpenForAgent(activeAgentId, !terminalOpen);
-                      }}
-                      title={t("app.openTerminalTitle")}
-                    >
-                      {t("app.terminal")}
-                    </button>
-                  </>
-                )}
-              </div>
             </>
           </div>
         </header>
@@ -4439,8 +4375,43 @@ ${goalTextRef.current}
             extraAction={{
               active: scratchPad.isOpen,
               label: t("scratchPad.openTooltip"),
-              onClick: scratchPad.toggle,
+              onClick: () => scratchPad.toggle(),
               icon: <Pencil size={17} />,
+            }}
+            terminalAction={{
+              active: terminalOpen,
+              label: t("app.terminal"),
+              onClick: () => {
+                if (!activeAgentId) return;
+                setTerminalOpenForAgent(activeAgentId, !terminalOpen);
+              },
+              icon: <Terminal size={17} />,
+            }}
+            filesAction={{
+              active: drawer === "files",
+              label: t("app.files"),
+              onClick: () => {
+                if (drawer === "files" && !drawerCollapsed) {
+                  setDrawer(null);
+                } else {
+                  openDrawer("files");
+                  setDrawerCollapsed(false);
+                }
+              },
+              icon: <FolderOpen size={17} />,
+            }}
+            editorsAction={{
+              active: editorsOpen,
+              label: t("app.openWithEditor"),
+              onClick: (e) => {
+                setEditorsOpen((open) => !open);
+                const btn = (e?.currentTarget as HTMLElement)?.closest("button");
+                if (btn) {
+                  const rect = btn.getBoundingClientRect();
+                  setEditorsAnchor({ x: rect.left - 4, y: rect.top });
+                }
+              },
+              icon: <Code size={17} />,
             }}
           />
         )}
@@ -5337,6 +5308,59 @@ ${goalTextRef.current}
           />
         </div>
       ) : null}
+
+      {/* 外部编辑器选择气泡 */}
+      {editorsOpen && editorsAnchor && (
+        <div
+          ref={editorsRef}
+          className="editors-popover"
+          style={{
+            position: "fixed",
+            right: window.innerWidth - editorsAnchor.x,
+            top: editorsAnchor.y,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {externalEditors.length === 0 ? (
+            <div className="editors-popover-empty">{t("app.noExternalEditors")}</div>
+          ) : (
+            externalEditors.map((editor) => (
+              <button
+                key={editor.id}
+                className="editors-popover-item"
+                onClick={() => {
+                  const projectPath =
+                    activeAgent?.cwd ||
+                    (activeProject && !isChatProject(activeProject)
+                      ? activeProject.path
+                      : undefined);
+                  if (projectPath) {
+                    void api.editors.openProject(editor, projectPath).catch((error) => {
+                      showToast(
+                        t("app.openEditorFailed", {
+                          error: error instanceof Error ? error.message : String(error),
+                        }),
+                        3000,
+                      );
+                    });
+                  }
+                  setEditorsOpen(false);
+                  setEditorsAnchor(null);
+                }}
+              >
+                <span className={`editor-logo ${editor.id}`}>
+                  {getEditorLogoUrl(editor.id) ? (
+                    <img src={getEditorLogoUrl(editor.id)} alt="" />
+                  ) : (
+                    editor.id.slice(0, 2).toUpperCase()
+                  )}
+                </span>
+                <span>{editor.name}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
 
     </div>
   );
