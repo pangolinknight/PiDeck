@@ -770,30 +770,36 @@ export function ModelsTab(props: {
 										<div className="config-form-row">
 											<label>{t("config.compatibility")}</label>
 											<div className="config-compat-group">
-												<label className="config-checkbox-label">
-													<input
-														type="checkbox"
-														checked={getCompat(name).supportsDeveloperRole === true}
-														onChange={(e) => {
-															const compat = { ...getCompat(name) };
-															compat.supportsDeveloperRole = e.target.checked;
-															props.onChangeProvider(name, "compat", compat);
-														}}
-													/>
-													<span>{t("config.developerRole")}</span>
-												</label>
-												<label className="config-checkbox-label">
-													<input
-														type="checkbox"
-														checked={getCompat(name).supportsReasoningEffort === true}
-														onChange={(e) => {
-															const compat = { ...getCompat(name) };
-															compat.supportsReasoningEffort = e.target.checked;
-															props.onChangeProvider(name, "compat", compat);
-														}}
-													/>
-													<span>{t("config.reasoningEffort")}</span>
-												</label>
+												<div className="config-compat-item">
+													<label className="config-checkbox-label">
+														<input
+															type="checkbox"
+															checked={getCompat(name).supportsDeveloperRole === true}
+															onChange={(e) => {
+																const compat = { ...getCompat(name) };
+																compat.supportsDeveloperRole = e.target.checked;
+																props.onChangeProvider(name, "compat", compat);
+															}}
+														/>
+														<span>{t("config.developerRole")}</span>
+													</label>
+													<small className="config-compat-item-desc">{t("config.developerRoleDesc")}</small>
+												</div>
+												<div className="config-compat-item">
+													<label className="config-checkbox-label">
+														<input
+															type="checkbox"
+															checked={getCompat(name).supportsReasoningEffort === true}
+															onChange={(e) => {
+																const compat = { ...getCompat(name) };
+																compat.supportsReasoningEffort = e.target.checked;
+																props.onChangeProvider(name, "compat", compat);
+															}}
+														/>
+														<span>{t("config.reasoningEffort")}</span>
+													</label>
+													<small className="config-compat-item-desc">{t("config.reasoningEffortDesc")}</small>
+												</div>
 											</div>
 										</div>
 

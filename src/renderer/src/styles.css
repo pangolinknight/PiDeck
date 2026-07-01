@@ -6417,7 +6417,7 @@ body.is-composer-resizing .composer-resize-handle::after {
 	min-height: 0;
 	flex: 1;
 	display: grid;
-	grid-template-columns: 220px minmax(0, 1fr);
+	grid-template-columns: 160px minmax(0, 1fr);
 	background: var(--color-bg-muted);
 }
 
@@ -6425,8 +6425,8 @@ body.is-composer-resizing .composer-resize-handle::after {
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--space-4);
-	padding: var(--space-4);
+	gap: var(--space-3);
+	padding: var(--space-3);
 	border-right: 1px solid var(--color-border-subtle);
 	background: var(--color-bg-sidebar);
 	overflow: auto;
@@ -7343,8 +7343,9 @@ a.config-btn {
 	grid-column: 2;
 }
 
-/* config-combobox 在 form-row 右侧列保持 padding-right 以避开切换按钮 */
-.config-form-row .config-combobox {
+/* config-combobox 在 form-row 右侧列保持 padding-right 以避开切换按钮。
+   只匹配直接子元素，避免误伤嵌套在 .config-header-field 内的 ConfigSelect。 */
+.config-form-row > .config-combobox {
 	grid-column: 2;
 }
 .config-form-row .config-combobox input {
@@ -8307,6 +8308,20 @@ a.config-btn {
 	display: flex;
 	gap: 16px;
 	flex-wrap: wrap;
+}
+
+.config-compat-item {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.config-compat-item-desc {
+	color: var(--color-text-tertiary);
+	font-size: var(--font-size-micro);
+	line-height: 1.35;
+	padding-left: 22px;
+	max-width: 300px;
 }
 
 /* provider 重命名输入框 */
