@@ -16,11 +16,9 @@
  * ## 让位机制
  * pi 的 registerTool 对同名工具按 Map.set 覆盖语义（后注册覆盖前注册，不抛错）。
  * 本扩展作为内置基线，遇到任何第三方 todo 扩展（如 rpiv-todo）都应让位，避免
- * 死 widget / 重复命令。覆盖两种加载顺序：
- *   1. 本扩展后加载：default 执行时 getAllTools() 已含其他 todo → 整体 return，不注册
- *   2. 本扩展先加载：立即注册，但可能被后加载的第三方覆盖 → session_start 时用
- *      isOwnTodo()（查 sourceInfo 是否含 "pi-deck-todo"）重新判定，被覆盖则 yielded，
- *      停掉 widget 与状态重建；/todo 命令转而引导用户使用第三方扩展的命令。
+ * 死 widget / 重复命令。让位依赖 session_start 时 isOwnTodo() 检测（查 sourceInfo
+ * 是否含 "pi-deck-todo"）。若被第三方覆盖则停掉 widget 与状态重建，/todo 命令
+ * 转而引导用户使用第三方扩展的命令。
  *
  * @packageDocumentation
  */
@@ -106,15 +104,9 @@ export default function (pi: ExtensionAPI) {
 		nextId = last?.data?.nextId ?? 1;
 	}
 
-	// 让位策略 1：default 执行时已有其他扩展注册了 todo（此时自身尚未注册，getAllTools
-	// 里的 todo 必来自第三方）→ 整体让位，不注册任何工具/命令/事件，纯净退场。
-	if (pi.getAllTools().some((t) => t.name === "todo")) {
-		yielded = true;
-		return;
-	}
-
-	// 让位策略 2：当前没有其他 todo → 立即注册（保证无第三方时当前会话即可用）。
-	// 若随后被后加载的第三方覆盖，session_start 的 isOwnTodo() 会判定为 yielded。
+	// 立即注册（运行时初始化后 getAllTools 才能调用，因此无法在 default 里做加载顺序检测）。
+	// 若被后加载的第三方覆盖（Map.set 后注册覆盖前注册），session_start 的 isOwnTodo()
+	// 会判定为 yielded，停掉 widget 并让命令转引导。
 	pi.registerTool({
 		name: "todo",
 		label: "Todo",
