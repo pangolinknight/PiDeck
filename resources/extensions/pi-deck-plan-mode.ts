@@ -231,7 +231,7 @@ export default function piDeckPlanModeExtension(pi: ExtensionAPI): void {
 	}
 
 	pi.registerCommand("plan", {
-		description: "Toggle PiDeck plan mode (read-only exploration)",
+		description: "切换 PiDeck 计划模式（只读探索，适用于复杂任务先做分析）",
 		handler: async (args, ctx) => {
 			const normalized = String(args ?? "").trim().toLowerCase();
 			if (["on", "enable", "enabled"].includes(normalized)) setPlanMode(ctx, true);
@@ -241,7 +241,7 @@ export default function piDeckPlanModeExtension(pi: ExtensionAPI): void {
 	});
 
 	pi.registerCommand("todos", {
-		description: "Show current PiDeck plan progress",
+		description: "查看当前计划进度",
 		handler: async (_args, ctx) => {
 			if (todoItems.length === 0) {
 				ctx.ui.notify("没有活跃的计划事项。", "info");

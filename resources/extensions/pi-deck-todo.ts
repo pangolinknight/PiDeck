@@ -197,7 +197,7 @@ export default function (pi: ExtensionAPI) {
 
 	// /todo 命令：用户手动查看当前列表（单数命名，避免与 plan-mode 的 /todos 冲突）
 	pi.registerCommand("todo", {
-		description: "Show all todos on the current branch",
+		description: "查看当前分支待办事项",
 		handler: async (_args, ctx) => {
 			// 被第三方覆盖时转而引导，避免显示本扩展的陈旧/空状态
 			if (!isOwnTodo()) {
