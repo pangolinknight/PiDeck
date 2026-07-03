@@ -1815,6 +1815,11 @@ export const ThinkingBlock = memo(function ThinkingBlock(props: {
 			>
 				<Brain size={14} />
 				<span>{t("thinking.title")}</span>
+				{!expanded && props.text && (
+					<span className="thinking-card-subtitle" title={props.text}>
+						{props.text.slice(0, 80)}{props.text.length > 80 ? "..." : ""}
+					</span>
+				)}
 				{props.endedAt ? <small>{formatTime(props.endedAt)}</small> : null}
 				<em>{expanded ? t("common.collapse") : t("common.expand")}</em>
 				<ChevronDown
