@@ -4226,6 +4226,13 @@ body.is-composer-resizing .composer-resize-handle::after {
 	font-size: var(--font-size-caption);
 	line-height: var(--line-height-caption);
 	color: var(--color-text-secondary);
+	max-height: 200px;
+	overflow-y: auto;
+}
+.extension-widget-line {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 .extension-widget-line + .extension-widget-line {
 	margin-top: var(--space-1);

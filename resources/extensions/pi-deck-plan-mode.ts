@@ -174,7 +174,7 @@ export default function piDeckPlanModeExtension(pi: ExtensionAPI): void {
 		if (executionMode && todoItems.length > 0) {
 			const completed = todoItems.filter((item) => item.completed).length;
 			ctx.ui.setWidget("pi-deck-plan-todos", [
-				`Plan progress ${completed}/${todoItems.length}`,
+				`计划进度 ${completed}/${todoItems.length}`,
 				...todoItems.map((item) => `${item.completed ? "☑" : "☐"} ${item.step}. ${item.text}`),
 			]);
 			return;
@@ -221,10 +221,10 @@ export default function piDeckPlanModeExtension(pi: ExtensionAPI): void {
 		todoItems = [];
 		if (enabled) {
 			enablePlanModeTools();
-			ctx.ui.notify("PiDeck Plan Mode enabled. Write tools are disabled until you execute a plan.", "info");
+			ctx.ui.notify("PiDeck 计划模式已启用。启用期间只能执行只读命令，不能修改文件。", "info");
 		} else {
 			restoreNormalModeTools();
-			ctx.ui.notify("PiDeck Plan Mode disabled. Normal tools restored.", "info");
+			ctx.ui.notify("PiDeck 计划模式已禁用。已恢复写权限。", "info");
 		}
 		updateWidget(ctx);
 		persistState();
@@ -244,7 +244,7 @@ export default function piDeckPlanModeExtension(pi: ExtensionAPI): void {
 		description: "Show current PiDeck plan progress",
 		handler: async (_args, ctx) => {
 			if (todoItems.length === 0) {
-				ctx.ui.notify("No active PiDeck plan todos.", "info");
+				ctx.ui.notify("没有活跃的计划事项。", "info");
 				return;
 			}
 			ctx.ui.notify(
@@ -361,13 +361,13 @@ export default function piDeckPlanModeExtension(pi: ExtensionAPI): void {
 		persistState();
 
 		const todoListText = todoItems.map((item) => `${item.step}. ☐ ${item.text}`).join("\n");
-		const choice = await ctx.ui.select("PiDeck Plan Mode - what next?", [
-			"Execute the plan (track progress)",
-			"Stay in plan mode",
-			"Refine the plan",
+		const choice = await ctx.ui.select("PiDeck 计划模式 — 请选择下一步操作", [
+			"执行计划（跟踪进度）",
+			"继续计划模式",
+			"修改计划",
 		]);
 
-		if (choice?.startsWith("Execute")) {
+		if (choice?.startsWith("执行")) {
 			planModeEnabled = false;
 			executionMode = true;
 			restoreNormalModeTools();
@@ -385,8 +385,8 @@ export default function piDeckPlanModeExtension(pi: ExtensionAPI): void {
 				},
 				{ triggerTurn: true, deliverAs: "followUp" },
 			);
-		} else if (choice === "Refine the plan") {
-			const refinement = await ctx.ui.editor("How should the plan be refined?", "");
+		} else if (choice?.startsWith("修改")) {
+			const refinement = await ctx.ui.editor("如何修改计划？", "");
 			if (refinement?.trim()) {
 				pi.sendUserMessage(refinement.trim(), { deliverAs: "followUp" });
 			}

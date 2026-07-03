@@ -83,7 +83,7 @@ export default function (pi: ExtensionAPI) {
 		if (todos.length > 0) {
 			const done = todos.filter((t) => t.done).length;
 			ctx.ui.setWidget(WIDGET_KEY, [
-				`Todos ${done}/${todos.length}`,
+				`待办事项 ${done}/${todos.length}`,
 				...todos.map((t) => `${t.done ? "☑" : "☐"} #${t.id} ${t.text}`),
 			]);
 		} else {
@@ -201,14 +201,11 @@ export default function (pi: ExtensionAPI) {
 		handler: async (_args, ctx) => {
 			// 被第三方覆盖时转而引导，避免显示本扩展的陈旧/空状态
 			if (!isOwnTodo()) {
-				ctx.ui.notify(
-					"Todo 工具由其他扩展提供，请使用其对应命令（如 /todos）查看。",
-					"info",
-				);
+				ctx.ui.notify("Todo 工具由其他扩展提供，请使用其对应命令（如 /todos）查看。", "info");
 				return;
 			}
 			if (todos.length === 0) {
-				ctx.ui.notify("No todos yet. Ask the agent to add some!", "info");
+				ctx.ui.notify("还没有待办事项，可以告诉 AI 添加。", "info");
 				return;
 			}
 			const done = todos.filter((t) => t.done).length;
