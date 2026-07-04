@@ -1206,6 +1206,15 @@ export class FeishuBridge {
 		const delay = Math.min(5000 * Math.pow(1.5, this.reconnectAttempts - 1), 60000);
 		log(`[飞书 Bridge] 将在 ${(delay / 1000).toFixed(1)}s 后重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 		this.updateStatus({ status: "connecting" });
-		this.reconnectTimer = setTimeout(async () => { this.reconnectTimer = null; try { await this.start(); } catch {} }, delay);
+		this.reconnectTimer = setTimeout(async () => {
+			this.reconnectTimer = null;
+			// start() 内部在失败时已记录日志并重新调度重连；此处的 catch 仅用于吞掉重新抛出的 rejection，
+			// 避免定时器回调产生未处理的 Promise rejection。补一条 warn 日志，避免这次重连尝试完全静默。
+			try {
+				await this.start();
+			} catch (error) {
+				warn("[飞书 Bridge] 重连尝试失败:", error instanceof Error ? error.message : error);
+			}
+		}, delay);
 	}
 }

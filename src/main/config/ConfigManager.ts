@@ -214,8 +214,25 @@ export class ConfigManager {
 					diagnostic: this.createJsonDiagnostic(fileName, raw, error),
 				};
 			}
-		} catch {
-			return { raw: JSON.stringify(fallback, null, 2), parsed: fallback };
+		} catch (error) {
+			// ENOENT 是正常情况：配置文件尚未创建，直接用默认值回退。
+			// 其它读取错误（权限不足 EACCES、路径被目录占位、IO 故障等）意味着文件很可能存在却读不出来——
+			// 此前的实现会把这类错误静默降级为默认值，用户随后保存就会用空配置覆盖真实配置，造成数据丢失且毫无提示。
+			// 因此这里只对 ENOENT 静默回退，其余错误保留可诊断信息并通过 diagnostic 向 UI 暴露，同时打日志便于排查。
+			if ((error as NodeJS.ErrnoException)?.code === "ENOENT") {
+				return { raw: JSON.stringify(fallback, null, 2), parsed: fallback };
+			}
+			const message = error instanceof Error ? error.message : String(error);
+			console.warn(`[ConfigManager] 读取配置文件 ${fileName} 失败:`, message);
+			return {
+				raw: JSON.stringify(fallback, null, 2),
+				parsed: fallback,
+				diagnostic: {
+					fileName,
+					message,
+					docsUrl: this.docsUrlForFile(fileName),
+				},
+			};
 		}
 	}
 

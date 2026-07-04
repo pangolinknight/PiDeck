@@ -319,6 +319,10 @@ export class AgentManager {
 				}
 				lines.push(`工作目录: ${diag.cwd}`);
 				lines.push(`版本检测: ${diag.versionCheck ? "✓ 通过" : "✗ 失败"}`);
+				// 版本检测失败时附上具体原因（如 command not found、超时），便于区分未安装与其它执行故障。
+				if (!diag.versionCheck && diag.versionCheckError) {
+					lines.push(`版本检测错误: ${diag.versionCheckError}`);
+				}
 
 				// 诊断与指引
 				lines.push("");
@@ -972,7 +976,15 @@ export class AgentManager {
 
 	private notifyStateListeners(tabs: AgentTab[]) {
 		for (const listener of this.stateListeners) {
-			try { listener(tabs); } catch {}
+			// 单个监听器抛错不能中断其余监听器的分发；但也不能完全吞掉，
+			// 否则 PetStateBridge 等订阅方内部的 bug 将无迹可查，记录日志便于定位。
+			try {
+				listener(tabs);
+			} catch (error) {
+				this.appLogger?.warn("agent", "State listener threw", {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
 		}
 	}
 
@@ -989,7 +1001,16 @@ export class AgentManager {
 	private handlePiEvent(agentId: string, event: unknown) {
 		// 通知本地监听器（FeishuBridge 等主进程内部订阅）
 		for (const listener of this.localEventListeners) {
-			try { listener(agentId, event); } catch {}
+			// 本地监听器抛错不应阻断事件继续向 IPC 分发；同时记录日志，
+			// 避免 FeishuBridge 等订阅方处理事件失败时被静默吞掉、难以排查。
+			try {
+				listener(agentId, event);
+			} catch (error) {
+				this.appLogger?.warn("agent", "Local event listener threw", {
+					agentId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
 		}
 		this.emit(ipcChannels.agentsEvent, { agentId, event });
 
