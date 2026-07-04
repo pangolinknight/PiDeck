@@ -14,6 +14,8 @@ export class PiProcess extends EventEmitter {
   private rpc?: PiRpcClient;
   /** 从 --version 解析出的主版本号，用于判断是否支持 --approve。pi 0.79.0+ 引入，低版本硬传会报 Unknown option 错误。 */
   private piMajorVersion: number | null = null;
+  /** 最近一次 --version 检测失败的原因（未安装、PATH 缺失、超时等），用于启动失败时的诊断展示。 */
+  private lastVersionCheckError: string | null = null;
 
   /** 启动失败 / 异常退出时的诊断信息 */
   private diagnostics: {
@@ -25,6 +27,7 @@ export class PiProcess extends EventEmitter {
     exitSignal: string | null;
     customPiPath: string | undefined;
     versionCheck: boolean;
+    versionCheckError: string | null;
   } | null = null;
 
   constructor(
@@ -44,6 +47,7 @@ export class PiProcess extends EventEmitter {
     exitSignal: string | null;
     customPiPath: string | undefined;
     versionCheck: boolean;
+    versionCheckError: string | null;
   }> | null {
     return this.diagnostics;
   }
@@ -72,6 +76,8 @@ export class PiProcess extends EventEmitter {
       exitSignal: null,
       customPiPath: this.settings?.customPiPath,
       versionCheck: versionOk || this.tryVersionCheck(locator),
+      // 记录 --version 检测失败原因，便于启动失败面板区分“未安装/PATH 缺失”和“低版本”等场景。
+      versionCheckError: this.lastVersionCheckError,
     };
 
     // 每个 agent 绑定独立 cwd，确保 pi 自己发现项目级 AGENTS.md、settings 和 session 分组。
@@ -158,9 +164,13 @@ export class PiProcess extends EventEmitter {
       });
       const version = result.trim();
       this.piMajorVersion = this.parseMajorVersion(version);
+      this.lastVersionCheckError = null;
       return true;
-    } catch {
+    } catch (error) {
+      // 检测失败（pi 未安装、PATH 未包含 pi、执行超时等）时保守返回 false，
+      // 但保留错误原因供 getDiagnostics 展示，避免启动失败时只看到笼统的“版本检测未通过”。
       this.piMajorVersion = 0;
+      this.lastVersionCheckError = error instanceof Error ? error.message : String(error);
       return false;
     }
   }
