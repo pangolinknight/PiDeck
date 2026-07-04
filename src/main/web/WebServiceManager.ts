@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
@@ -17,8 +18,11 @@ import type {
 
 type WebServiceSettings = Pick<
 	AppSettings,
-	"webServiceEnabled" | "webServiceHost" | "webServicePort"
+	"webServiceEnabled" | "webServiceHost" | "webServicePort" | "webServiceToken"
 >;
+
+/** 请求体上限 1 MB，避免恶意大负载占满内存 */
+const MAX_BODY_BYTES = 1024 * 1024;
 
 type WebServiceDependencies = {
 	listProjects: () => Project[];
@@ -40,8 +44,15 @@ export class WebServiceManager {
 	private server: Server | null = null;
 	private current: { host: string; port: number } | null = null;
 	private readonly rendererRoot = join(__dirname, "../renderer");
+	/** 服务端访问令牌，启动时自动生成，可由用户在设置中固定 */
+	private token: string = "";
 
 	constructor(private readonly deps: WebServiceDependencies) {}
+
+	/** 获取当前服务令牌，供设置页展示给用户 */
+	getToken(): string {
+		return this.token;
+	}
 
 	async applySettings(settings: WebServiceSettings) {
 		if (!settings.webServiceEnabled) {
@@ -51,6 +62,7 @@ export class WebServiceManager {
 
 		const host = settings.webServiceHost.trim() || "0.0.0.0";
 		const port = this.normalizePort(settings.webServicePort);
+		this.token = settings.webServiceToken?.trim() || randomUUID();
 		if (this.server && this.current?.host === host && this.current.port === port) return;
 		await this.stop();
 		await this.start(host, port);
@@ -100,6 +112,12 @@ export class WebServiceManager {
 			const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
 			if (request.method === "OPTIONS") {
 				this.sendNoContent(response);
+				return;
+			}
+
+			// 非静态资源的 API 请求必须携带有效令牌
+			if (url.pathname.startsWith("/api/") && !this.verifyToken(request, url)) {
+				this.sendError(response, 401, "未授权：缺少或无效的访问令牌");
 				return;
 			}
 
@@ -487,15 +505,30 @@ export class WebServiceManager {
 		response.writeHead(204, {
 			"access-control-allow-origin": "*",
 			"access-control-allow-methods": "GET,POST,OPTIONS",
-			"access-control-allow-headers": "content-type",
+			"access-control-allow-headers": "content-type, authorization",
 		});
 		response.end();
 	}
 
+	/** 验证请求携带的令牌（Authorization header 或 ?token= 查询参数） */
+	private verifyToken(request: IncomingMessage, url: URL): boolean {
+		if (!this.token) return true;
+		const authHeader = request.headers.authorization ?? "";
+		const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+		const queryToken = url.searchParams.get("token") ?? "";
+		return bearerToken === this.token || queryToken === this.token;
+	}
+
 	private async readJson<T>(request: IncomingMessage) {
 		const chunks: Buffer[] = [];
+		let totalBytes = 0;
 		for await (const chunk of request) {
-			chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+			const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+			totalBytes += buf.length;
+			if (totalBytes > MAX_BODY_BYTES) {
+				throw new Error("请求体超过 1 MB 上限");
+			}
+			chunks.push(buf);
 		}
 		if (chunks.length === 0) return {} as T;
 		return JSON.parse(Buffer.concat(chunks).toString("utf8")) as T;

@@ -8,7 +8,7 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { app } from "electron";
+import { app, safeStorage } from "electron";
 import type { FeishuBotConfig } from "../../shared/types";
 
 // ===== 配置文件路径 =====
@@ -128,8 +128,8 @@ export function updateBot(botId: string, patch: Partial<FeishuBotConfig>): Feish
 	const index = config.bots.findIndex((b) => b.id === botId);
 	if (index === -1) return undefined;
 
-	// 如果 patch.appSecret 是明文（不是 base64），加密后存储
-	if (patch.appSecret && !isBase64(patch.appSecret)) {
+	// 如果 patch.appSecret 是明文（非已加密格式），加密后存储
+	if (patch.appSecret && !isEncryptedOrBase64(patch.appSecret)) {
 		patch.appSecret = encryptSecret(patch.appSecret);
 	}
 
@@ -231,24 +231,36 @@ export function saveBindings(botId: string, bindings: FeishuChatBindingPersist[]
 	writeFileSync(path, JSON.stringify(bindings, null, 2), "utf-8");
 }
 
-// ===== 加密/解密（简化版，用 Electron safeStorage） =====
+// ===== 加密/解密（使用 Electron safeStorage，降级为 base64） =====
+
+/** safeStorage 前缀标记，用于区分新格式密文和旧 base64 密文 */
+const SAFE_STORAGE_PREFIX = "v2:";
 
 function encryptSecret(plainSecret: string): string {
-	// Phase 1: 简单 base64，后续可升级为 Electron safeStorage
+	if (safeStorage.isEncryptionAvailable()) {
+		const encrypted = safeStorage.encryptString(plainSecret);
+		return SAFE_STORAGE_PREFIX + encrypted.toString("base64");
+	}
+	// 降级：系统密钥链不可用时仍使用 base64（如 CI 环境）
 	return Buffer.from(plainSecret, "utf-8").toString("base64");
 }
 
 function decryptSecret(encryptedSecret: string): string {
 	if (!encryptedSecret) return "";
 	try {
+		if (encryptedSecret.startsWith(SAFE_STORAGE_PREFIX)) {
+			const ciphertext = Buffer.from(encryptedSecret.slice(SAFE_STORAGE_PREFIX.length), "base64");
+			return safeStorage.decryptString(ciphertext);
+		}
+		// 向后兼容：旧格式 base64 密文
 		return Buffer.from(encryptedSecret, "base64").toString("utf-8");
 	} catch {
-		return encryptedSecret; // 降级：返回原始值
+		return encryptedSecret;
 	}
 }
 
-function isBase64(str: string): boolean {
-	// Base64 只包含 A-Za-z0-9+/= 字符，且长度是 4 的倍数
+function isEncryptedOrBase64(str: string): boolean {
+	if (str.startsWith(SAFE_STORAGE_PREFIX)) return true;
 	if (!str || str.length % 4 !== 0) return false;
 	return /^[A-Za-z0-9+/]*={0,2}$/.test(str);
 }

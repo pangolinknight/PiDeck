@@ -10,7 +10,7 @@ import {
 	Tray,
 } from "electron";
 import { randomUUID } from "node:crypto";
-import { basename, join } from "node:path";
+import { basename, join, normalize, resolve } from "node:path";
 import { createWriteStream } from "node:fs";
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { is } from "@electron-toolkit/utils";
@@ -124,9 +124,7 @@ let feishuBridge: FeishuBridge | null = null;
 const RELEASES_URL = "https://github.com/ayuayue/pi-desktop/releases";
 const LATEST_RELEASE_API =
 	"https://api.github.com/repos/ayuayue/pi-desktop/releases/latest";
-const POSTHOG_PROJECT_KEY =
-	process.env.POSTHOG_PROJECT_KEY ??
-	"phc_xgJ8gFUMgExZEEPzZ7VRa7698ENcaDRquWZVGYb2dCFK";
+const POSTHOG_PROJECT_KEY = process.env.POSTHOG_PROJECT_KEY ?? "";
 const POSTHOG_HOST = process.env.POSTHOG_HOST ?? "https://us.i.posthog.com";
 
 type GitHubReleaseAsset = {
@@ -416,6 +414,25 @@ async function installDownloadedUpdate(filePath: string) {
 	// 便携版用户通常下载 zip/AppImage/tar.gz 后需要替换当前目录,避免在运行中覆盖自身可执行文件。
 	await appLogger.info("update", "Open downloaded update package", { filePath });
 	await shell.openPath(filePath);
+}
+
+/**
+ * 校验文件路径是否位于已注册的项目目录内，防止 IPC 层被利用进行任意路径读写。
+ * 允许访问项目目录或 pi 配置目录（~/.pi/agent/）下的文件。
+ */
+function assertPathWithinProjects(targetPath: string): void {
+	const { sep } = require("node:path") as typeof import("node:path");
+	const { homedir } = require("node:os") as typeof import("node:os");
+	const normalizedTarget = normalize(resolve(targetPath));
+	const projects = projectStore.list();
+	const piConfigDir = normalize(join(homedir(), ".pi", "agent"));
+	const allowed = projects.some((p) => {
+		const projectRoot = normalize(p.path);
+		return normalizedTarget === projectRoot || normalizedTarget.startsWith(projectRoot + sep);
+	});
+	if (!allowed && !normalizedTarget.startsWith(piConfigDir + sep) && normalizedTarget !== piConfigDir) {
+		throw new Error(`路径不在已注册的项目目录内: ${targetPath}`);
+	}
 }
 
 function setupTray() {
@@ -993,12 +1010,13 @@ function registerIpc() {
 	});
 
 	ipcMain.handle(ipcChannels.filesOpen, async (_event, path: string) => {
+		assertPathWithinProjects(path);
 		const error = await shell.openPath(path);
-		// Electron 通过返回字符串报告打开失败；显式抛出后前端才能提示路径不存在或系统无法打开。
 		if (error) throw new Error(error);
 	});
 
 	ipcMain.handle(ipcChannels.filesReadContent, async (_event, path: string) => {
+		assertPathWithinProjects(path);
 		try {
 			return await readFile(path, "utf8");
 		} catch (error) {
@@ -1010,16 +1028,19 @@ function registerIpc() {
 	});
 
 	ipcMain.handle(ipcChannels.filesWriteContent, async (_event, path: string, content: string) => {
+		assertPathWithinProjects(path);
 		await writeFile(path, content, "utf8");
 		void appLogger.info("file", "File written", { path, bytes: Buffer.byteLength(content, "utf8") });
 	});
 
 	ipcMain.handle(ipcChannels.filesDelete, async (_event, path: string, recursive?: boolean) => {
+		assertPathWithinProjects(path);
 		await fileSystemService.delete(path, recursive);
 		void appLogger.info("file", "File deleted", { path, recursive: Boolean(recursive) });
 	});
 
 	ipcMain.handle(ipcChannels.filesRename, async (_event, path: string, newName: string) => {
+		assertPathWithinProjects(path);
 		const result = await fileSystemService.rename(path, newName);
 		void appLogger.info("file", "File renamed", { path, newName, result });
 		return result;
