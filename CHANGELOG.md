@@ -4,7 +4,37 @@
 
 All notable changes to PiDeck are documented here.
 
-## [Unreleased]
+## v0.6.4 - 2026-07-05
+
+### 🚀 New Features
+
+- **Thinking/Response Status Indicator**: Replaced the subtle "running" dot in the
+  toolbar with a three-dot animated indicator at the bottom of the message list.
+  Supports "Thinking", "Executing {tool}", and animated waiting dots —
+  auto-hides when the model starts responding.
+- **Thinking Block Default Expanded**: Reasoning blocks now default to expanded,
+  keeping the inference process visible after streaming ends. Can still be
+  collapsed manually.
+
+### ✨ UI Polish
+
+- **Thinking Card Breathing Animation**: Streaming thinking card now has a
+  pulsing border glow and subtle background pulse, so you can tell the system
+  is still active even when the text stalls.
+- **Thinking Card Background**: Matches the tool-running card style with a
+  subtle accent-tinted background.
+- **Web Search Card Subtitle**: Collapsed `web_search` / `fetch_content` tool
+  cards now show the search query or URL as a subtitle.
+- **Content Width Slider**: Minimum value raised from 50 to 800 px to prevent
+  overly narrow composition area.
+- **Waiting Indicator Spacing**: Three-dot waiting indicator now has 16 px
+  margin above, matching card spacing.
+
+### 🐛 Bug Fixes
+
+- **Dark Mode White Backgrounds**: Fixed hardcoded `#fcfcfc` in `.chat-pane`,
+  `.composer`, `.composer-box`, and loading overlay — now properly adapts to
+  dark mode via `--color-bg-panel`.
 
 ## v0.6.3 - 2026-06-28
 

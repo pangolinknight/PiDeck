@@ -1,6 +1,6 @@
 {
   "name": "pi-desktop",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "PiDeck workbench for managing multiple pi RPC agents across project folders.",
   "private": true,
   "license": "MIT",
