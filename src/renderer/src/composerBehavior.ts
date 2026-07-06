@@ -86,6 +86,8 @@ export function getComposerEnterIntent(
 }
 
 function isComposingInput(event: ComposerKeyboardState) {
+	// Shift+Enter 不可能是 IME 合成，直接跳过检测
+	if (event.shiftKey) return false;
 	// keyCode/which=229 是部分 Chromium/macOS 输入法在 composition 期间的兼容信号。
 	return Boolean(
 		event.isComposing ||
