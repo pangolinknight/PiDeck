@@ -4831,12 +4831,12 @@ ${goalTextRef.current}
                       <AskQuestionCard key={message.id} message={message} onRespond={(response) => {
                         const req = meta.uiRequest;
                         if (!req || !activeAgentId) return;
-                        // cancelled 走 abort 而非 sendUiResponse：pi 内置 ask_question 工具
-                        // 不识别 cancelled 字段，收到无 value 的响应会默认选第一个选项。
-                        // abort 能正确打断正在等待 extension_ui_response 的 agent_end 处理器。
+                        // cancelled 通过 sendUiResponse 正常发送：pi 的 rpc-mode 对
+                        // select/input/editor 返回 undefined（卡片显示"已取消"），
+                        // confirm 返回 false（同"否"，pi 的 ctx.ui.confirm() 不区分取消和否）
                         if (response.cancelled) {
                           setCancellingUi(true);
-                          abortAgent(activeAgentId);
+                          api.agents.sendUiResponse(activeAgentId, req.requestId, response);
                         } else {
                           api.agents.sendUiResponse(activeAgentId, req.requestId, response);
                         }
