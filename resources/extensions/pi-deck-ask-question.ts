@@ -180,7 +180,9 @@ function singleResult(q: NormalizedQuestion, a: Answer, cancelled: boolean) {
 			question: q.question,
 			type: q.type,
 			answer: cancelled ? null : a.value,
+			answerLabel: a.label,
 			answered: !cancelled && a.value !== null,
+			options: q.options,
 			...(cancelled ? { cancelled: true } : {}),
 		},
 	};
