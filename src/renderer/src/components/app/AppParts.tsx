@@ -9,12 +9,33 @@ import {
 	type PointerEvent as ReactPointerEvent,
 	type ReactNode,
 } from "react";
-import { toPng } from "html-to-image";
+import { toBlob } from "html-to-image";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
+import {
+	summarizeMessage,
+	type ToolGroupItem,
+	type MessageItem,
+	type ThinkingGroupItem,
+	type AgentRunItem,
+	type RenderMessage,
+	type ComposerSuggestionResult,
+	type ComposerTrigger,
+	type SuggestionItem,
+	groupToolMessages,
+	buildOutline,
+	detectTrigger,
+	applySuggestion,
+	clearSuggestionTrigger,
+	buildSuggestionItems,
+	mergeCommands,
+	matches,
+	displayPath,
+	flattenFiles,
+} from "./AppUtils";
 
 // Mermaid 库体积数 MB，仅在真正出现 mermaid 代码块时才动态加载，
 // 避免随渲染进程常驻、放大内存占用并在流式期间抢占主线程。
@@ -1044,30 +1065,6 @@ export function AgentAvatar(props: { status: string }) {
 	);
 }
 
-export function matches(value: string, keyword: string) {
-	return (
-		!keyword.trim() ||
-		value.toLowerCase().includes(keyword.trim().toLowerCase())
-	);
-}
-
-export function displayPath(path?: string) {
-	if (!path) return "";
-	const home = getHomePathPrefix();
-	const normalized = path.replace(/\\/g, "/");
-	const friendly =
-		home && normalized.toLowerCase().startsWith(home.toLowerCase())
-			? `~${normalized.slice(home.length)}`
-			: normalized;
-	return friendly.length > 36 ? `...${friendly.slice(-35)}` : friendly;
-}
-
-function getHomePathPrefix() {
-	// 浏览器侧无法直接读取 OS home;从常见 Windows 用户路径中提取到 /Users/name,其他路径保持原样。
-	const match = location.href.match(/file:\/\/\/([A-Za-z]:\/Users\/[^/]+)/i);
-	return match?.[1] ?? "C:/Users/14012";
-}
-
 export function EmptyState(props: { hasProject: boolean; onCreate: () => void }) {
 	return (
 		<div className="empty-state">
@@ -1097,36 +1094,10 @@ export function EmptyState(props: { hasProject: boolean; onCreate: () => void })
 	);
 }
 
-export type ToolGroupItem = {
-	kind: "tool-group";
-	id: string;
-	messages: ChatMessage[];
-};
-
-export type MessageItem = { kind: "message"; message: ChatMessage };
-
-export type ThinkingGroupItem = {
-	kind: "thinking-group";
-	id: string;
-	messages: ChatMessage[];
-	text: string;
-	startedAt: number;
-	endedAt: number;
-};
-
-export type AgentRunItem = {
-	kind: "agent-run";
-	id: string;
-	items: Array<MessageItem | ToolGroupItem | ThinkingGroupItem>;
-	startedAt: number;
-	endedAt: number;
-};
-
-export type RenderMessage = MessageItem | ToolGroupItem | ThinkingGroupItem | AgentRunItem;
-
 async function copyElementAsPng(element: HTMLElement) {
 	// 截图复制依赖浏览器 ClipboardItem PNG 支持；失败时由调用方提示/回退，不影响文本复制。
-	const dataUrl = await toPng(element, {
+	// 使用 toBlob 而非 toPng+fetch 避免 CSP 拒绝连接 data: URL。
+	const blob = await toBlob(element, {
 		cacheBust: true,
 		pixelRatio: Math.min(2, window.devicePixelRatio || 1),
 		backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--color-bg-panel") || undefined,
@@ -1136,7 +1107,7 @@ async function copyElementAsPng(element: HTMLElement) {
 				!node.classList.contains("user-turn-actions") &&
 				!node.classList.contains("copy-menu-popover")),
 	});
-	const blob = await (await fetch(dataUrl)).blob();
+	if (!blob) return;
 	await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
 }
 
@@ -1214,136 +1185,6 @@ function CopyMenu(props: {
 			)}
 		</div>
 	);
-}
-
-export function groupToolMessages(messages: ChatMessage[]): RenderMessage[] {
-	const result: RenderMessage[] = [];
-	let currentTools: ChatMessage[] = [];
-	let currentThinking: ChatMessage[] = [];
-	let currentRun: Array<MessageItem | ToolGroupItem | ThinkingGroupItem> = [];
-	let runStartedAt = 0;
-	let runEndedAt = 0;
-
-	function isThinkingOnly(message: ChatMessage) {
-		return (
-			message.role === "assistant" &&
-			Boolean(message.thinking?.trim()) &&
-			!stripThinkingTags(stripAnsi(message.text)).trim()
-		);
-	}
-
-	function flushThinking() {
-		if (currentThinking.length === 0) return;
-		const previous = currentRun[currentRun.length - 1];
-		const nextGroup: ThinkingGroupItem = {
-			kind: "thinking-group",
-			id: currentThinking.map((message) => message.id).join("|"),
-			messages: currentThinking,
-			text: currentThinking
-				.map((message) => stripAnsi(message.thinking ?? ""))
-				.filter(Boolean)
-				.join("\n\n"),
-			startedAt: currentThinking[0]?.timestamp ?? runStartedAt,
-			endedAt:
-				currentThinking[currentThinking.length - 1]?.timestamp ?? runEndedAt,
-		};
-		if (previous?.kind === "thinking-group") {
-			// 历史会话可能把多段纯 thinking 拆成多条 assistant 消息；如果展示层上已经相邻，
-			// 继续合并成一个折叠块，避免一轮回答里出现一串重复“思考过程”卡片。
-			previous.id = `${previous.id}|${nextGroup.id}`;
-			previous.messages = [...previous.messages, ...nextGroup.messages];
-			previous.text = [previous.text, nextGroup.text].filter(Boolean).join("\n\n");
-			previous.endedAt = nextGroup.endedAt;
-		} else {
-			currentRun.push(nextGroup);
-		}
-		runEndedAt = nextGroup.endedAt;
-		currentThinking = [];
-	}
-
-	function flushTools() {
-		if (currentTools.length === 0) return;
-		flushThinking();
-		// 同一轮问答里的连续 tool 消息聚合显示,减少工具调用刷屏;详情仍保留在每条 tool 的 meta 里可展开查看。
-		const group: ToolGroupItem = {
-			kind: "tool-group",
-			id: currentTools.map((message) => message.id).join("|"),
-			messages: currentTools,
-		};
-		currentRun.push(group);
-		runEndedAt = currentTools[currentTools.length - 1]?.timestamp ?? runEndedAt;
-		currentTools = [];
-	}
-
-	function flushRun() {
-		flushTools();
-		flushThinking();
-		if (currentRun.length === 0) return;
-
-		// 合并连续的 assistant 文本消息，避免同一轮回答被拆成多个气泡
-		const merged: Array<MessageItem | ToolGroupItem | ThinkingGroupItem> = [];
-		for (const item of currentRun) {
-			const prev = merged[merged.length - 1];
-			if (
-				item.kind === "message" &&
-				item.message.role === "assistant" &&
-				prev?.kind === "message" &&
-				prev.message.role === "assistant"
-			) {
-				prev.message = {
-					...prev.message,
-					text: prev.message.text + "\n\n" + item.message.text,
-					thinking: (prev.message.thinking || "") + (item.message.thinking ? "\n\n" + item.message.thinking : ""),
-					id: prev.message.id + "|" + item.message.id,
-				};
-			} else {
-				merged.push(item);
-			}
-		}
-
-		result.push({
-			kind: "agent-run",
-			id: merged
-				.map((item) => (item.kind === "message" ? item.message.id : item.id))
-				.join("|"),
-			items: merged,
-			startedAt: runStartedAt,
-			endedAt: runEndedAt || runStartedAt,
-		});
-		currentRun = [];
-		runStartedAt = 0;
-		runEndedAt = 0;
-	}
-
-	function appendRunMessage(message: ChatMessage) {
-		flushThinking();
-		flushTools();
-		if (currentRun.length === 0) runStartedAt = message.timestamp;
-		runEndedAt = message.timestamp;
-		currentRun.push({ kind: "message", message });
-	}
-
-	for (const message of messages) {
-		if (isThinkingOnly(message)) {
-			flushTools();
-			if (currentRun.length === 0 && currentThinking.length === 0) {
-				runStartedAt = message.timestamp;
-			}
-			currentThinking.push(message);
-			runEndedAt = message.timestamp;
-		} else if (message.role === "assistant") {
-			appendRunMessage(message);
-		} else if (message.role === "tool") {
-			flushThinking();
-			if (currentRun.length === 0) runStartedAt = message.timestamp;
-			currentTools.push(message);
-		} else {
-			flushRun();
-			result.push({ kind: "message", message });
-		}
-	}
-	flushRun();
-	return result;
 }
 
 // ============================================================
@@ -2158,6 +1999,11 @@ export const TurnRow = memo(function TurnRow(props: {
 	fileSummariesByMessage?: Record<string, SessionModifiedFile[]>;
 	/** Agent 正在处理请求或流式输出中时禁用编辑/删除等操作按钮 */
 	agentRunning?: boolean;
+	/** 多选模式 */
+	multiSelectMode?: boolean;
+	selected?: boolean;
+	onToggleSelect?: () => void;
+	onEnterMultiSelect?: () => void;
 }) {
 	const { run } = props;
 	const [editing, setEditing] = useState(false);
@@ -2219,15 +2065,25 @@ export const TurnRow = memo(function TurnRow(props: {
 	if (!hasContent) return null;
 
 	return (
-		<article ref={rowRef} className={`turn-row${collapsed ? " collapsed" : ""}`} data-message-id={run.id}>
-			<button
-				className="turn-row-rail"
-				type="button"
-				onClick={() => setCollapsed((value) => !value)}
-				aria-expanded={!collapsed}
-				aria-label={collapsed ? t("common.expand") : t("common.collapse")}
-				title={collapsed ? t("common.expand") : t("common.collapse")}
-			/>
+		<article ref={rowRef} className={`turn-row${collapsed ? " collapsed" : ""}${props.multiSelectMode ? " multi-select-mode" : ""}${props.selected ? " selected" : ""}`} data-message-id={run.id}>
+			{props.multiSelectMode ? (
+				<button
+					className={`message-checkbox${props.selected ? " checked" : ""}`}
+					type="button"
+					onClick={props.onToggleSelect}
+					aria-label={props.selected ? t("common.deselect") : t("common.select")}
+					title={props.selected ? t("common.deselect") : t("common.select")}
+				/>
+			) : (
+				<button
+					className="turn-row-rail"
+					type="button"
+					onClick={() => setCollapsed((value) => !value)}
+					aria-expanded={!collapsed}
+					aria-label={collapsed ? t("common.expand") : t("common.collapse")}
+					title={collapsed ? t("common.expand") : t("common.collapse")}
+				/>
+			)}
 			<div className="turn-row-body">
 				<div className="turn-row-meta">
 					<span className="turn-row-agent">pi</span>
@@ -2326,9 +2182,16 @@ export const TurnRow = memo(function TurnRow(props: {
 							/>
 						) : null}
 						{/* 操作栏 */}
-						{mergedText && !editing && (
+						{mergedText && !editing && !props.multiSelectMode && (
 							<div className="turn-row-actions">
 								<CopyMenu text={mergedText} markdown={mergedText} targetRef={rowRef} />
+								<button
+									className="turn-row-action-btn"
+									onClick={props.onEnterMultiSelect}
+									title={t("app.multiSelectEnter")}
+								>
+									{t("app.multiSelectEnter")}
+								</button>
 								{!props.isStreaming && !props.agentRunning && assistantMessages.at(-1)?.message.id && (
 									<>
 										<button
@@ -2404,6 +2267,11 @@ export const UserBubble = memo(function UserBubble(props: {
 	validFilePaths?: Set<string>;
 	/** Agent 正在处理请求或流式输出中时禁用编辑/删除等操作按钮 */
 	agentRunning?: boolean;
+	/** 多选模式 */
+	multiSelectMode?: boolean;
+	selected?: boolean;
+	onToggleSelect?: () => void;
+	onEnterMultiSelect?: () => void;
 }) {
 	const { message } = props;
 	const rowRef = useRef<HTMLElement | null>(null);
@@ -2445,7 +2313,7 @@ export const UserBubble = memo(function UserBubble(props: {
 		);
 	};
 	return (
-		<article ref={rowRef} className="user-turn" data-message-id={message.id}>
+		<article ref={rowRef} className={`user-turn${props.multiSelectMode ? " multi-select-mode" : ""}${props.selected ? " selected" : ""}`} data-message-id={message.id}>
 			{skills.length > 0 && (
 				<div className="user-turn-skills">
 					{skills.map((name) => (
@@ -2519,8 +2387,26 @@ export const UserBubble = memo(function UserBubble(props: {
 				)}
 				<time>{formatTime(message.timestamp)}</time>
 			</div>
+			{props.multiSelectMode && (
+				<button
+					className={`message-checkbox user-turn-checkbox${props.selected ? " checked" : ""}`}
+					type="button"
+					onClick={props.onToggleSelect}
+					aria-label={props.selected ? t("common.deselect") : t("common.select")}
+					title={props.selected ? t("common.deselect") : t("common.select")}
+				/>
+			)}
 			<div className="user-turn-actions">
-				<CopyMenu text={cleanText} markdown={message.text} targetRef={rowRef} />
+				{!props.multiSelectMode && <CopyMenu text={cleanText} markdown={message.text} targetRef={rowRef} />}
+				{!props.multiSelectMode && (
+					<button
+						className="user-turn-action-btn"
+						onClick={props.onEnterMultiSelect}
+						title={t("app.multiSelectEnter")}
+					>
+						{t("app.multiSelectEnter")}
+					</button>
+				)}
 				{!editing && !props.agentRunning && (
 					<>
 						<button className="user-turn-action-btn" onClick={() => {
@@ -2917,32 +2803,6 @@ function formatTime(timestamp: number) {
 		hour: "2-digit",
 		minute: "2-digit",
 	});
-}
-
-export function buildOutline(messages: ChatMessage[]) {
-	// 会话定位只展示用户提问，每条代表一轮完整对话（用户提问 + 紧随其后的 AI 回答）。
-	// AI 回答不单独列出，避免列表冗长且与用户提问重复描述同一轮对话。
-	return messages
-		.filter((message) => message.role === "user")
-		.map((message) => ({
-			id: message.id,
-			role: message.role,
-			title: summarizeMessage(message.text),
-			time: formatTime(message.timestamp),
-		}))
-		.filter((item) => item.title);
-}
-
-function summarizeMessage(text: string) {
-	// 过滤 ANSI 转义码,避免 outline 标题显示乱码
-	const cleaned = text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "");
-	const firstLine =
-		cleaned
-			.replace(/```[\s\S]*?```/g, " ")
-			.split(/\r?\n/)
-			.map((line) => line.trim())
-			.find(Boolean) ?? "";
-	return firstLine.length > 48 ? `${firstLine.slice(0, 48)}...` : firstLine;
 }
 
 export function RpcLogModal(props: {
@@ -3922,220 +3782,6 @@ export function SessionHistoryModal(props: {
 	);
 }
 
-export function flattenFiles(nodes: FileTreeNode[]): FileTreeNode[] {
-	return nodes.flatMap((node) =>
-		node.type === "file" ? [node] : flattenFiles(node.children ?? []),
-	);
-}
-
-export type ComposerSuggestionResult = {
-	text: string;
-	cursor: number;
-};
-
-export type ComposerTrigger = {
-	start: number;
-	char: string;
-	query: string;
-};
-
-/**
- * 在光标位置检测 @ / 触发器。
- *
- * 早期实现用「整段 prompt 最后一个空白分词」判定,完全忽略光标位置,
- * 导致光标停在文字中间时,末尾分词在光标之后,文件/skill 菜单无法弹出。
- * 这里改为以光标为锚:取光标前最后一个 @ 或 /,要求从该字符到光标之间
- * 连续无空白、无其它触发符,再要求触发符前一字符不是字母/数字(避免误判
- * email@host、路径 a/b、URL https://)。这样「写一段话@文件」「用/ppt」
- * 也能在文字中间唤出引用/命令菜单。
- */
-export function detectTrigger(
-	text: string,
-	cursor: number,
-): ComposerTrigger | null {
-	if (cursor < 0 || cursor > text.length) cursor = text.length;
-	const before = text.slice(0, cursor);
-	const atIdx = before.lastIndexOf("@");
-	const slashIdx = before.lastIndexOf("/");
-	const start = Math.max(atIdx, slashIdx);
-	if (start < 0) return null;
-	const char = before[start];
-	const segment = before.slice(start + 1);
-	// 触发符到光标之间必须连续(无空白、无其它 @ /),否则不是同一个触发上下文。
-	if (/[\s@/]/.test(segment)) return null;
-	const prevChar = start > 0 ? before[start - 1] : "";
-	if (prevChar) {
-		// 允许字母/数字前置(中文写作不打空格的习惯同样适用于英文上下文)。
-		// 仅 URL 协议(://)与路径分隔符(/usr/bin)不触发,
-		// email@host 的 @ 虽然会触发但不影响体验(选了文件后自然替换掉)。
-		if (/[:/]/.test(prevChar)) return null;
-	}
-	return { start, char, query: segment };
-}
-
-export function applySuggestion(
-	current: string,
-	cursor: number,
-	value: string,
-): ComposerSuggestionResult {
-	const trigger = detectTrigger(current, cursor);
-	if (!trigger) {
-		const text = `${current}${value} `;
-		return { text, cursor: text.length };
-	}
-	// 用选中项替换「触发符 .. 光标」这一段,保留光标之后的文本。
-	const text = `${current.slice(0, trigger.start)}${value} ${current.slice(cursor)}`;
-	return { text, cursor: trigger.start + value.length + 1 };
-}
-
-export function clearSuggestionTrigger(
-	current: string,
-	cursor: number,
-): ComposerSuggestionResult {
-	const trigger = detectTrigger(current, cursor);
-	if (!trigger) return { text: current, cursor };
-	const text = `${current.slice(0, trigger.start)}${current.slice(cursor)}`;
-	return { text, cursor: trigger.start };
-}
-
-export type SuggestionItem = {
-	key: string;
-	label: string;
-	description: string;
-	value: string;
-};
-
-export function buildSuggestionItems(
-	prompt: string,
-	cursor: number,
-	commands: PiCommand[],
-	files: FileTreeNode[],
-): SuggestionItem[] {
-	const allCommands = mergeCommands(commands);
-	const trigger = detectTrigger(prompt, cursor);
-	if (!trigger) return [];
-	const keyword = trigger.query.toLowerCase();
-	if (trigger.char === "/") {
-		return allCommands
-			.map((command, index) => ({ command, index }))
-			.filter(({ command }) => command.name.toLowerCase().includes(keyword))
-			.sort((a, b) => {
-				const aPinned = PINNED_COMMAND_NAMES.has(a.command.name);
-				const bPinned = PINNED_COMMAND_NAMES.has(b.command.name);
-				if (aPinned !== bPinned) return aPinned ? -1 : 1;
-				return a.index - b.index;
-			})
-			.map(({ command }) => ({
-				key: command.name,
-				label: `/${command.name}`,
-				description: command.description ?? "",
-				value: `/${command.name}`,
-			}));
-	}
-	if (trigger.char === "@") {
-		return files
-			.map((file) => ({
-				file,
-				score:
-					fuzzyScore(file.relativePath, keyword) +
-					fuzzyScore(file.name, keyword) * 2,
-			}))
-			.filter((item) => item.score > 0 || !keyword)
-			.sort((a, b) => b.score - a.score)
-			.slice(0, 8)
-			.map((item) => ({
-				key: item.file.path,
-				label: `@${item.file.name}`,
-				description: item.file.relativePath,
-				value: `@${item.file.relativePath}`,
-			}));
-	}
-	return [];
-}
-
-export function mergeCommands(commands: PiCommand[]) {
-	const visibleCommands = commands.filter(isVisibleDesktopCommand);
-	const names = new Set(visibleCommands.map((command) => command.name));
-	const extras = getBuiltinCommands().filter(
-		(command) => !names.has(command.name) && isVisibleDesktopCommand(command),
-	);
-	return [...visibleCommands, ...extras];
-}
-
-const PINNED_COMMAND_NAMES = new Set<string>();
-const HIDDEN_DESKTOP_BUILTIN_COMMAND_NAMES = new Set([
-	"new",
-	"model",
-	"resume",
-	"fork",
-	"name",
-	"session",
-	"tree",
-	"clone",
-	"copy",
-	"export",
-	"share",
-	"settings",
-	"reload",
-	"hotkeys",
-	"login",
-	"logout",
-	// goal 模式暂不作为桌面端推荐命令展示,避免当前版本引导用户使用未稳定能力。
-	"goal",
-]);
-
-function isBuiltinDesktopCommand(command: PiCommand) {
-	// get_commands 可能返回 source 为空的 pi 内置命令;扩展/skill 命令通常带有自己的 source。
-	// Desktop 只隐藏 CLI 内置命令,避免误伤用户自己安装的同名扩展能力。
-	return command.source == null || command.source === "builtin";
-}
-
-function isVisibleDesktopCommand(command: PiCommand) {
-	return !(
-		isBuiltinDesktopCommand(command) &&
-		HIDDEN_DESKTOP_BUILTIN_COMMAND_NAMES.has(command.name.toLowerCase())
-	);
-}
-
-// pi 内置斜杠命令,get_commands 只返回扩展注册的命令,这些需要手动补充
-// desktop 已有独立 UI 入口或在 desktop 中不适合执行的命令由 HIDDEN_DESKTOP_COMMAND_NAMES 统一过滤。
-function getBuiltinCommands(): PiCommand[] {
-	return [
-	{
-		name: "session",
-		description: t("prompt.command.session.description"),
-		source: "builtin",
-	},
-	{
-		name: "tree",
-		description: t("prompt.command.tree.description"),
-		source: "builtin",
-	},
-	{ name: "clone", description: t("prompt.command.clone.description"), source: "builtin" },
-	{
-		name: "compact",
-		description: t("prompt.command.compact.description"),
-		source: "builtin",
-	},
-	{ name: "copy", description: t("prompt.command.copy.description"), source: "builtin" },
-	{ name: "export", description: t("prompt.command.export.description"), source: "builtin" },
-	{
-		name: "share",
-		description: t("prompt.command.share.description"),
-		source: "builtin",
-	},
-	{ name: "settings", description: t("prompt.command.settings.description"), source: "builtin" },
-	{ name: "reload", description: t("prompt.command.reload.description"), source: "builtin" },
-	{ name: "hotkeys", description: t("prompt.command.hotkeys.description"), source: "builtin" },
-	{
-		name: "login",
-		description: t("prompt.command.login.description"),
-		source: "builtin",
-	},
-	{ name: "logout", description: t("prompt.command.logout.description"), source: "builtin" },
-	];
-}
-
 export function PromptSuggestions(props: {
 	prompt: string;
 	items: SuggestionItem[];
@@ -4405,22 +4051,6 @@ export function SessionContextMenu(props: {
 			</div>
 		</div>
 	);
-}
-
-function fuzzyScore(value: string, keyword: string) {
-	if (!keyword) return 1;
-	const text = value.toLowerCase();
-	const query = keyword.toLowerCase();
-	if (text.includes(query)) return 100 + query.length;
-	let score = 0;
-	let pos = 0;
-	for (const ch of query) {
-		const found = text.indexOf(ch, pos);
-		if (found === -1) return 0;
-		score += found === pos ? 8 : 2;
-		pos = found + 1;
-	}
-	return score;
 }
 
 export function SettingsModal(props: {

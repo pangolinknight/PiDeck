@@ -2859,6 +2859,15 @@ body.is-terminal-resizing .terminal-resize-handle::before {
   outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
+.copy-menu-trigger.copied {
+  color: var(--color-success);
+  animation: copy-success-pulse 0.4s ease;
+}
+@keyframes copy-success-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
 
 /* 编辑区域：内联 textarea + 操作按钮 */
 .turn-row-edit-area {
@@ -3792,6 +3801,167 @@ body.is-terminal-resizing .terminal-resize-handle::before {
   outline-offset: 1px;
 }
 
+/* ── 多选模式复选框 ── */
+.message-checkbox {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  background: var(--color-bg-panel);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  padding: 0;
+  position: relative;
+}
+.message-checkbox:hover {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-bg-panel));
+}
+.message-checkbox:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.message-checkbox.checked {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+.message-checkbox.checked::after {
+  content: "";
+  display: block;
+  width: 6px;
+  height: 10px;
+  border: solid var(--color-bg);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translateY(-1px);
+}
+
+/* 多选模式下的 turn-row：隐藏折叠竖线，显示复选框 */
+.turn-row.multi-select-mode {
+  position: relative;
+}
+.turn-row.multi-select-mode .turn-row-rail {
+  display: none;
+}
+.turn-row.multi-select-mode .message-checkbox {
+  position: absolute;
+  left: 10px;
+  top: 18px;
+  z-index: 2;
+}
+.turn-row.multi-select-mode .turn-row-actions {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 多选模式下用户消息的复选框 */
+.user-turn.multi-select-mode {
+  position: relative;
+}
+.user-turn.multi-select-mode .user-turn-checkbox {
+  position: absolute;
+  top: 14px;
+  right: calc(100% + 10px);
+  z-index: 2;
+}
+.user-turn.multi-select-mode .user-turn-actions {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 选中的消息高亮 */
+.turn-row.selected {
+  background: color-mix(in srgb, var(--color-accent) 4%, var(--color-bg));
+  border-radius: var(--radius-md);
+}
+.user-turn.selected {
+  background: color-mix(in srgb, var(--color-accent) 4%, var(--color-bg));
+  border-radius: var(--radius-md);
+}
+
+/* 多选顶部栏装饰 */
+.chat-header.multi-select-active .chat-title-block strong::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  margin-left: 8px;
+  vertical-align: middle;
+  animation: multi-select-pulse 1.5s ease-in-out infinite;
+}
+@keyframes multi-select-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* ── 多选浮动操作栏 ── */
+.multi-select-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 10px 20px;
+  background: var(--color-bg-elevated);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 -2px 12px color-mix(in srgb, var(--color-shadow) 15%, transparent);
+}
+.multi-select-count {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  font-family: var(--font-family-business);
+}
+.multi-select-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.multi-select-action-btn {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+  color: var(--color-text-primary);
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-caption);
+  font-family: var(--font-family-base);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+.multi-select-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.multi-select-action-btn:not(:disabled):hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-bg-panel));
+}
+.multi-select-action-btn:not(:disabled):active {
+  transform: scale(0.96);
+}
+.multi-select-action-btn:not(:disabled):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.multi-select-action-btn.primary {
+  border-color: var(--color-border);
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+.multi-select-action-btn.primary:hover {
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-bg-hover));
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+/* 多选模式切换按钮 */
 /* 用户消息中的 skill 徽标：pi 展开后的 /skill:name 会以 <skill> 块注入消息文本，
    这里把它从正文剥除并单独渲染成轻量徽标，让用户知道这条消息用了哪些 skill。
    徽标仅作展示：取消内部 gap（斜杠与名字紧贴成一个整体，避免割裂），并禁用文本选中。 */
