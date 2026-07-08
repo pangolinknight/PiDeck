@@ -1,6 +1,6 @@
 import { app, dialog } from "electron";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename, join, normalize, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { Project } from "../../shared/types";
 
@@ -51,17 +51,24 @@ export class ProjectStore {
   }
 
   async add(path: string, worktreeParentId?: string) {
-    const existing = this.projects.find(project => project.path === path);
+    const normalizedPath = this.normalizeProjectPath(path);
+    const existing = this.projects.find(project => this.sameProjectPath(project.path, normalizedPath));
     if (existing) {
+      existing.path = normalizedPath;
       existing.lastOpenedAt = Date.now();
+      // 外部已有 worktree 可能曾经作为顶级项目加入；开启工作区后需要补上父子关系。
+      if (worktreeParentId && existing.id !== worktreeParentId) {
+        existing.worktreeParentId = worktreeParentId;
+        existing.pinned = false;
+      }
       await this.save();
       return existing;
     }
 
     const project: Project = {
       id: randomUUID(),
-      name: basename(path) || path,
-      path,
+      name: basename(normalizedPath) || normalizedPath,
+      path: normalizedPath,
       lastOpenedAt: Date.now(),
       sortOrder: this.nextSortOrder(),
       ...(worktreeParentId ? { worktreeParentId } : {}),
@@ -73,7 +80,10 @@ export class ProjectStore {
   }
 
   async remove(id: string) {
-    this.projects = this.projects.filter(project => project.id !== id || this.isChatProject(project));
+    // 删除父项目时同步移除子项目记录，避免留下不可见的孤儿 worktree 项目。
+    this.projects = this.projects.filter(project =>
+      (project.id !== id && project.worktreeParentId !== id) || this.isChatProject(project),
+    );
     await this.save();
   }
 
@@ -178,9 +188,10 @@ export class ProjectStore {
     return this.list().filter(p => p.worktreeParentId === parentId);
   }
 
-  /** 按路径查找项目 */
+  /** 按路径查找项目；Windows 上忽略大小写和分隔符差异。 */
   findByPath(path: string) {
-    return this.projects.find(project => project.path === path) ?? null;
+    const normalizedPath = this.normalizeProjectPath(path);
+    return this.projects.find(project => this.sameProjectPath(project.path, normalizedPath)) ?? null;
   }
 
   async toggleWorktreeEnabled(id: string) {
@@ -193,6 +204,16 @@ export class ProjectStore {
 
   private isChatProject(project: Project) {
     return project.kind === "chat" || project.id === CHAT_PROJECT_ID;
+  }
+
+  private normalizeProjectPath(path: string) {
+    return normalize(resolve(path));
+  }
+
+  private sameProjectPath(a: string, b: string) {
+    const left = this.normalizeProjectPath(a);
+    const right = this.normalizeProjectPath(b);
+    return process.platform === "win32" ? left.toLowerCase() === right.toLowerCase() : left === right;
   }
 
   private async save() {

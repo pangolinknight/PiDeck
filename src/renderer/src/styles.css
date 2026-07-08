@@ -1317,6 +1317,13 @@ body:not(.is-list-resizing)
 .worktree-workspace-header:hover {
   background: var(--color-hover);
 }
+.project-group.worktree-enabled > .conversation.agent-row,
+.project-group.worktree-enabled > .conversation.session-row,
+.project-group.worktree-enabled > .codex-subagent-sidebar-group,
+.project-group.worktree-enabled > .session-more-row,
+.project-group.worktree-enabled > .project-session-loading {
+  margin-left: 30px;
+}
 .worktree-row {
   display: flex;
   align-items: center;
@@ -1359,6 +1366,10 @@ body:not(.is-list-resizing)
 }
 .worktree-row:hover .worktree-remove {
   opacity: 1;
+}
+.worktree-nested-row {
+  margin-left: 18px;
+  width: calc(100% - 18px);
 }
 .worktree-create-btn {
   display: flex;

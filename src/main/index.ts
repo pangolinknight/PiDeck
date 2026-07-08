@@ -1484,7 +1484,12 @@ function registerIpc() {
 		async (_event, projectId: string) => {
 			const project = projectStore.get(projectId);
 			if (!project) throw new Error(`Project not found: ${projectId}`);
-			return worktreeService.list(project.path);
+			const entries = await worktreeService.list(project.path);
+			// 每次扫描都同步注册外部新增 worktree，保证侧栏数据和 git 状态一致。
+			for (const wt of entries) {
+				await projectStore.add(wt.path, projectId);
+			}
+			return entries;
 		},
 	);
 
@@ -1493,7 +1498,9 @@ function registerIpc() {
 		async (_event, projectId: string, branchName: string) => {
 			const project = projectStore.get(projectId);
 			if (!project) throw new Error(`Project not found: ${projectId}`);
-			return worktreeService.create(project.path, projectId, branchName);
+			const info = await worktreeService.create(project.path, projectId, branchName);
+			await projectStore.add(info.path, projectId);
+			return info;
 		},
 	);
 
@@ -1502,7 +1509,12 @@ function registerIpc() {
 		async (_event, projectId: string, worktreePath: string) => {
 			const project = projectStore.get(projectId);
 			if (!project) throw new Error(`Project not found: ${projectId}`);
-			return worktreeService.remove(worktreePath, project.path);
+			const ok = await worktreeService.remove(worktreePath, project.path);
+			if (ok) {
+				const child = projectStore.findByPath(worktreePath);
+				if (child) await projectStore.remove(child.id);
+			}
+			return ok;
 		},
 	);
 

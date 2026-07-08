@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, rm, realpath } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { app } from "electron";
@@ -42,26 +42,25 @@ export class WorktreeService {
 		projectId: string,
 		branchName: string,
 	): Promise<{ path: string; branch: string }> {
-		const slug = this.slugify(branchName);
-		const worktreeDir = this.resolveWorktreeDir(projectId, slug);
-		const branch = `pideck/${slug}`;
-
-		// 确保 worktree 根目录存在
+		const baseSlug = this.slugify(branchName);
 		await mkdir(this.resolveWorktreeRootDir(projectId), { recursive: true });
 
-		// 创建 worktree（仅创建目录结构，不 checkout）
+		const { worktreeDir, branch } = await this.allocateWorktreeTarget(projectPath, projectId, baseSlug);
+
+		// 创建 worktree（仅创建目录结构，不 checkout），再 reset --hard 填充内容。
 		await execFileAsync(
 			"git",
 			["worktree", "add", "--no-checkout", "-b", branch, worktreeDir],
 			{ cwd: projectPath },
 		);
 
-		// 填充工作树内容
-		await execFileAsync(
-			"git",
-			["reset", "--hard"],
-			{ cwd: worktreeDir },
-		);
+		try {
+			await execFileAsync("git", ["reset", "--hard"], { cwd: worktreeDir });
+		} catch (error) {
+			// reset 失败时清理刚创建的 worktree，避免残留半初始化目录。
+			await this.remove(worktreeDir, projectPath).catch(() => false);
+			throw error;
+		}
 
 		return { path: worktreeDir, branch };
 	}
@@ -71,22 +70,27 @@ export class WorktreeService {
 	 * 先 git worktree remove --force，再清理目录，最后删除对应的分支。
 	 */
 	async remove(worktreePath: string, projectPath: string): Promise<boolean> {
+		const entries = await this.list(projectPath);
+		const normalizedTarget = await this.canonical(worktreePath);
+		const entry = entries.find(asyncEntry => this.samePath(asyncEntry.path, normalizedTarget));
+		if (!entry) return false;
+		const branch = entry.branch;
+
 		try {
-			// 先尝试 git worktree remove
-			await execFileAsync(
-				"git",
-				["worktree", "remove", "--force", worktreePath],
-				{ cwd: projectPath },
-			);
+			await execFileAsync("git", ["worktree", "remove", "--force", worktreePath], { cwd: projectPath });
 		} catch {
-			// git worktree remove 失败时，尝试直接删除目录
+			// git 的记录可能已损坏；后续仍尝试清理目录，但不吞掉路径保护。
 		}
 
-		// 清理目录
 		try {
 			await rm(worktreePath, { recursive: true, force: true });
 		} catch {
 			return false;
+		}
+
+		// 只删除 PiDeck 创建的分支，避免误删用户外部 worktree 的业务分支。
+		if (branch?.startsWith("pideck/")) {
+			await execFileAsync("git", ["branch", "-D", branch], { cwd: projectPath }).catch(() => undefined);
 		}
 
 		return true;
@@ -96,6 +100,22 @@ export class WorktreeService {
 	 * 生成唯一可用的目录名和分支名。
 	 * 将分支名 slug 化，避免非法字符。
 	 */
+	private async allocateWorktreeTarget(projectPath: string, projectId: string, baseSlug: string) {
+		for (let attempt = 0; attempt < 26; attempt++) {
+			const suffix = attempt === 0 ? "" : `-${String.fromCharCode(97 + attempt - 1)}`;
+			const slug = `${baseSlug}${suffix}`;
+			const worktreeDir = this.resolveWorktreeDir(projectId, slug);
+			const branch = `pideck/${slug}`;
+			if (existsSync(worktreeDir)) continue;
+			const ref = await execFileAsync("git", ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`], { cwd: projectPath })
+				.then(() => true)
+				.catch(() => false);
+			if (ref) continue;
+			return { worktreeDir, branch };
+		}
+		throw new Error("无法生成唯一的 worktree 名称");
+	}
+
 	private slugify(input: string): string {
 		return input
 			.trim()
@@ -124,7 +144,7 @@ export class WorktreeService {
 	private parseWorktreeList(stdout: string, projectPath: string): WorktreeEntry[] {
 		const entries: WorktreeEntry[] = [];
 		// 规范化路径用于比较（Windows 忽略大小写）
-		const normalizedRoot = resolve(projectPath).toLowerCase();
+		const normalizedRoot = this.canonicalSync(projectPath);
 
 		const lines = stdout.split(/\r?\n/);
 		let current: Partial<WorktreeEntry> | null = null;
@@ -135,10 +155,10 @@ export class WorktreeService {
 				// 空行 = 条目结束
 				if (current) {
 					const path = current.path ? resolve(current.path) : "";
-					if (path.toLowerCase() !== normalizedRoot && current.branch) {
+					if (!this.samePath(path, normalizedRoot)) {
 						entries.push({
 							path,
-							branch: current.branch.replace(/^refs\/heads\//, ""),
+							branch: current.branch?.replace(/^refs\/heads\//, "") ?? "detached",
 						});
 					}
 					current = null;
@@ -159,14 +179,29 @@ export class WorktreeService {
 		// 处理最后一条（文件可能不以空行结尾）
 		if (current) {
 			const path = current.path ? resolve(current.path) : "";
-			if (path.toLowerCase() !== normalizedRoot && current.branch) {
+			if (!this.samePath(path, normalizedRoot)) {
 				entries.push({
 					path,
-					branch: current.branch.replace(/^refs\/heads\//, ""),
+					branch: current.branch?.replace(/^refs\/heads\//, "") ?? "detached",
 				});
 			}
 		}
 
 		return entries;
+	}
+
+	private canonicalSync(input: string) {
+		const normalized = resolve(input);
+		return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+	}
+
+	private async canonical(input: string) {
+		const resolved = resolve(input);
+		const real = await realpath(resolved).catch(() => resolved);
+		return process.platform === "win32" ? real.toLowerCase() : real;
+	}
+
+	private samePath(a: string, b: string) {
+		return this.canonicalSync(a) === this.canonicalSync(b);
 	}
 }
