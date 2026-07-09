@@ -5258,7 +5258,7 @@ ${goalTextRef.current}
               onCycleModel={cycleModel}
               onPickModel={openModelPicker}
               onPickThinking={() => setThinkingPickerOpen(true)}
-              onCompact={compactAgent}
+              onCompact={() => compactAgent()}
               composerAgentMode={currentComposerAgentMode}
               onOpenComposerModePicker={() => setComposerModePickerOpen(true)}
               onCancelPlan={() => setCurrentComposerAgentMode("normal")}

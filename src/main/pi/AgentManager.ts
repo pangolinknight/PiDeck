@@ -738,30 +738,74 @@ export class AgentManager {
 	async compact(agentId: string, prompt?: string) {
 		const runtime = this.requireRuntime(agentId);
 		const trimmedPrompt = prompt?.trim();
+		const startTime = Date.now();
+
+		void this.appLogger?.info("agent", "Compact requested", {
+			agentId,
+			prompt: trimmedPrompt,
+			hasSessionPath: !!runtime.tab.sessionPath,
+		});
 
 		// 标记压缩中，退出处理器据此区分压缩重启与异常崩溃
 		this.compactingAgents.add(agentId);
 
 		try {
-			await runtime.process.client.request(
+			const response = await runtime.process.client.request(
 				trimmedPrompt ? { type: "compact", prompt: trimmedPrompt } : { type: "compact" },
 				120_000,
 			);
+			void this.appLogger?.info("agent", "Compact RPC response received", {
+				agentId,
+				elapsedMs: Date.now() - startTime,
+				rpcSuccess: response.success,
+				rpcError: response.error,
+			});
+
+			// 检查 RPC 返回的 success 字段：pi CLI 可能压缩成功但后续步骤抛异常，
+			// 此时 session 文件已写入但 RPC 仍返回错误。
+			if (!response.success) {
+				void this.appLogger?.warn("agent", "Compact RPC returned failure (session might still be written)", {
+					agentId,
+					error: response.error,
+				});
+			}
+
 			this.compactingAgents.delete(agentId);
 			// 压缩成功且进程未退出，直接加载消息
 			await this.loadMessages(agentId).catch(() => undefined);
+			void this.appLogger?.info("agent", "Compact completed successfully", {
+				agentId,
+				totalElapsedMs: Date.now() - startTime,
+			});
 		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			const processAlive = runtime.process.isRunning();
+			void this.appLogger?.error("agent", "Compact failed", {
+				agentId,
+				elapsedMs: Date.now() - startTime,
+				error: errorMsg,
+				processAlive,
+				hasSessionPath: !!runtime.tab.sessionPath,
+			});
+
 			this.compactingAgents.delete(agentId);
 
 			// 如果进程在压缩期间退出（pi 压缩后自动重启进程的行为），
 			// RPC 请求会因连接断开而失败，但压缩实际已完成。
 			// 尝试重连同一会话，不从 compact() 层面抛出错误。
-			if (!runtime.process.isRunning() && runtime.tab.sessionPath) {
+			if (!processAlive && runtime.tab.sessionPath) {
+				void this.appLogger?.info("agent", "Compact: process exited, reattaching", {
+					agentId,
+				});
 				await this.reattachProcess(agentId, runtime.tab.sessionPath);
 				runtime.tab.status = "idle";
 				await this.loadMessages(agentId).catch(() => undefined);
 				this.addMessage(agentId, "system", "会话压缩完成");
 				this.emitState();
+				void this.appLogger?.info("agent", "Compact: reattach succeeded", {
+					agentId,
+					totalElapsedMs: Date.now() - startTime,
+				});
 			} else {
 				// 非退出相关的 RPC 错误，正常抛出
 				throw error;
@@ -862,7 +906,6 @@ export class AgentManager {
 
 			void this.appLogger?.info("agent", "Process reattached successfully", {
 				agentId,
-				elapsedMs: Date.now() - Date.now(),
 			});
 		} catch (error) {
 			void this.appLogger?.error("agent", "Process reattach failed", {
@@ -1809,6 +1852,25 @@ export class AgentManager {
 				typed,
 				typed.success ? "success" : "error",
 			);
+		}
+
+		// 自动/手动压缩事件（pi 在自动或手动压缩完成后会发出这些事件），
+		// 用于记录压缩耗时和结果，便于排查压缩性能问题。
+		if (typed.type === "compaction_start") {
+			void this.appLogger?.info("agent", "Compaction started", {
+				agentId,
+				reason: typed.reason,
+			});
+		}
+		if (typed.type === "compaction_end") {
+			void this.appLogger?.info("agent", "Compaction ended", {
+				agentId,
+				reason: typed.reason,
+				result: typed.result ? "success" : "failed",
+				aborted: typed.aborted,
+				willRetry: typed.willRetry,
+				errorMessage: typed.errorMessage,
+			});
 		}
 
 		if (typed.type === "agent_end") {

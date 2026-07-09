@@ -1929,9 +1929,18 @@ function registerIpc() {
 		return result;
 	});
 	ipcMain.handle(ipcChannels.agentsCompact, async (_event, agentId: string, prompt?: string) => {
-		const result = await agentManager.compact(agentId, prompt);
-		void appLogger.info("agent", "Agent compact requested", { agentId });
-		return result;
+		void appLogger.info("agent", "Agent compact IPC called", { agentId, prompt });
+		try {
+			const result = await agentManager.compact(agentId, prompt);
+			void appLogger.info("agent", "Agent compact IPC succeeded", { agentId });
+			return result;
+		} catch (error) {
+			void appLogger.error("agent", "Agent compact IPC failed", {
+				agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			throw error;
+		}
 	});
 	ipcMain.handle(ipcChannels.agentsRuntimeState, (_event, agentId: string) =>
 		agentManager.getRuntimeState(agentId),
