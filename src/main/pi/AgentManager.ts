@@ -66,8 +66,14 @@ export class AgentManager {
 	private readonly stateListeners = new Set<(tabs: AgentTab[]) => void>();
 	/** 开启了 RPC 日志记录的 agent id 集合 */
 	private readonly rpcLoggingAgents = new Set<string>();
-	/** 正在执行压缩操作的 agent，用于区分压缩重启和异常崩溃 */
+	/** 正在执行手动压缩操作的 agent，用于区分手动压缩重启和异常崩溃 */
 	private readonly compactingAgents = new Set<string>();
+	/**
+	 * Pi 通过事件报告正在自动/手动压缩的 agent。
+	 * 自动压缩发生在 agent_end 之后，桌面端若不单独追踪，会过早把会话置为 idle，
+	 * 用户随后发送的新消息可能撞上 Pi 内部 compaction，表现为“会话中断”。
+	 */
+	private readonly rpcCompactingAgents = new Set<string>();
 	/** 用户主动停止的 agent，用于退出处理器中跳过自动重连 */
 	private readonly userInitiatedStop = new Set<string>();
 	/** 已尝试过自动重连的 agent（防止无限循环），重连成功后清除 */
@@ -882,8 +888,34 @@ export class AgentManager {
 			};
 			this.emit(ipcChannels.agentsRpcLog, logEntry);
 		});
-		// 重连后的进程再次退出 → 不再自动重连，防止无限循环
-		process.on("exit", () => {
+		process.on("exit", (payload: { code: number | null; signal: string | null }) => {
+			if (this.userInitiatedStop.has(agentId)) {
+				this.userInitiatedStop.delete(agentId);
+				runtime.tab.status = "closed";
+				this.emitState();
+				return;
+			}
+
+			// 自动压缩也可能发生在重连后的进程中；继续复用同一会话文件重附加，
+			// 但仍用 autoRestartAttempted 做单次保护，避免真正异常退出时无限重启。
+			if (!this.autoRestartAttempted.has(agentId) && runtime.tab.sessionPath && payload.code === 0) {
+				this.autoRestartAttempted.add(agentId);
+				runtime.tab.status = "starting";
+				this.emitState();
+				this.reattachProcess(agentId, runtime.tab.sessionPath)
+					.then(() => {
+						runtime.tab.status = "idle";
+						this.addMessage(agentId, "system", "会话压缩完成，Agent 已自动重连");
+						this.emitState();
+					})
+					.catch(() => {
+						runtime.tab.status = "closed";
+						this.addMessage(agentId, "error", "Agent 进程意外退出，自动重连失败");
+						this.emitState();
+					});
+				return;
+			}
+
 			runtime.tab.status = "closed";
 			this.emitState();
 		});
@@ -905,6 +937,8 @@ export class AgentManager {
 			runtime.tab.sessionPath = data?.sessionFile ?? sessionPath;
 			runtime.tab.title = data?.sessionName ?? runtime.tab.title;
 			runtime.tab.status = "idle";
+			// 进程退出型压缩可能来不及发 compaction_end；重连成功即表示 Pi 已可继续接收消息。
+			this.rpcCompactingAgents.delete(agentId);
 
 			// 重连成功后清除自动重连标记，允许下一次再触发
 			this.autoRestartAttempted.delete(agentId);
@@ -1026,7 +1060,10 @@ export class AgentManager {
 			modelId: model?.id,
 			thinkingLevel: state?.thinkingLevel,
 			isStreaming: state?.isStreaming,
-			isCompacting: state?.isCompacting,
+			isCompacting:
+				state?.isCompacting ||
+				this.rpcCompactingAgents.has(agentId) ||
+				this.compactingAgents.has(agentId),
 			/** 工具执行状态从本地追踪，无需 Pi 进程查询 */
 			isExecutingTool: !!(this.toolExecutingByAgent.get(agentId)),
 			executingToolName: this.toolExecutingByAgent.get(agentId) ?? undefined,
@@ -1044,6 +1081,15 @@ export class AgentManager {
 			cacheHitPercent,
 			cost: stats?.cost,
 		};
+	}
+
+	private async emitRuntimeState(agentId: string) {
+		try {
+			const state = await this.getRuntimeState(agentId);
+			this.emit(ipcChannels.agentsRuntimeState, { agentId, state });
+		} catch {
+			// 运行态刷新失败不影响主流程；下一次轮询或事件会继续同步。
+		}
 	}
 
 	private pickNumber(...values: unknown[]) {
@@ -1885,12 +1931,33 @@ export class AgentManager {
 		// 自动/手动压缩事件（pi 在自动或手动压缩完成后会发出这些事件），
 		// 用于记录压缩耗时和结果，便于排查压缩性能问题。
 		if (typed.type === "compaction_start") {
+			this.rpcCompactingAgents.add(agentId);
+			if (runtime) {
+				// 自动压缩在 agent_end 之后触发：Pi 仍在改写上下文，但不会再发 agent_start。
+				// 因此桌面端必须主动保持 running，阻止用户误以为空闲并继续发送消息。
+				runtime.tab.status = "running";
+				this.emitState();
+				void this.emitRuntimeState(agentId);
+			}
 			void this.appLogger?.info("agent", "Compaction started", {
 				agentId,
 				reason: typed.reason,
 			});
 		}
 		if (typed.type === "compaction_end") {
+			this.rpcCompactingAgents.delete(agentId);
+			if (runtime) {
+				// compaction 会向 session JSONL 写入新的边界记录；立即重载消息，
+				// 避免前端仍展示压缩前分支，下一轮继续对话时看起来像“断在旧会话”。
+				void this.loadMessages(agentId).catch(() => undefined);
+				if (runtime.tab.status !== "error") {
+					// compaction_end 之后 Pi 仍可能因 overflow retry 或 queued follow-up 自动继续。
+					// 只有 agent_settled 才表示不会再自动发起下一轮，不能在这里提前 idle。
+					runtime.tab.status = "running";
+				}
+				this.emitState();
+				void this.emitRuntimeState(agentId);
+			}
 			void this.appLogger?.info("agent", "Compaction ended", {
 				agentId,
 				reason: typed.reason,
@@ -1902,15 +1969,11 @@ export class AgentManager {
 		}
 
 		if (typed.type === "agent_end") {
-			// 即使 runtime 已被清理（如用户快速切换/停止 agent），仍需向会话写入错误提示，
-			// 否则用户会看到发送后完全空白、没有任何反馈。
+			// agent_end 只表示一次底层 run 结束；Pi 之后仍可能执行自动重试、自动压缩，
+			// 或压缩后继续 queued follow-up。最终空闲必须等 agent_settled，避免中途误判 idle。
 			if (runtime) {
-				runtime.tab.status = "idle";
-				// 清理流式思考状态
-				this.streamingThinking.delete(agentId);
 				this.activeAssistantMessageIds.delete(agentId);
 				this.toolMessageIds.delete(agentId);
-				this.emitThinking(agentId, "");
 			}
 			// agent 异常结束时（如 API 返回 400、模型报错等），将错误提示写入会话，避免用户看到空白。
 			// 错误信息的存放位置因 pi 版本和错误类型不同而有多种可能：
@@ -1970,19 +2033,29 @@ export class AgentManager {
 				if (runtime) runtime.tab.status = "error";
 			}
 			if (runtime) this.emitState();
-			// 同步刷新 runtimeState，将 isStreaming 重置为 false；
-			// 否则前端 isAgentBusy 依赖的 isStreaming 仍为过期的 true，导致排队 flush 无法触发。
-			void this.getRuntimeState(agentId)
-				.then((state) =>
-					this.emit(ipcChannels.agentsRuntimeState, { agentId, state }),
-				)
-				.catch(() => undefined);
-			// 会话结束时发送系统通知，让用户知道 agent 已完成工作
-			// 只在最后一条消息是 assistant 消息时通知，避免工具调用结束时也触发通知
-			const messages = this.messages.get(agentId) ?? [];
-			const lastMessage = messages[messages.length - 1];
-			if (lastMessage?.role === "assistant" && runtime) {
-				this.notifySessionEnd(runtime.tab.title);
+			// agent_end 后 runtimeState 可能暂时仍显示后续 compaction/retry；立即同步一次，
+			// 但不要把它当作最终空闲信号，最终状态由 agent_settled 处理。
+			void this.emitRuntimeState(agentId);
+		}
+
+		if (typed.type === "agent_settled") {
+			if (runtime && runtime.tab.status !== "error" && runtime.tab.status !== "closed") {
+				// agent_settled 是 Pi 的最终稳定点：没有自动重试、自动压缩、压缩 retry
+				// 或 queued follow-up 会继续执行，此时才允许恢复 idle 并通知用户完成。
+				runtime.tab.status = "idle";
+				this.streamingThinking.delete(agentId);
+				this.activeAssistantMessageIds.delete(agentId);
+				this.toolMessageIds.delete(agentId);
+				this.rpcCompactingAgents.delete(agentId);
+				this.emitThinking(agentId, "");
+				this.emitState();
+				void this.emitRuntimeState(agentId);
+
+				const messages = this.messages.get(agentId) ?? [];
+				const lastMessage = messages[messages.length - 1];
+				if (lastMessage?.role === "assistant") {
+					this.notifySessionEnd(runtime.tab.title);
+				}
 			}
 		}
 
@@ -3095,6 +3168,7 @@ export class AgentManager {
 		const runtime = this.agents.get(agentId);
 		if (!runtime || runtime.tab.status !== "running") return;
 		if ((this.pendingUIRequests.get(agentId)?.size ?? 0) > 0) return;
+		if (this.rpcCompactingAgents.has(agentId) || this.compactingAgents.has(agentId)) return;
 		if (this.activeAssistantMessageIds.has(agentId)) return;
 		if (this.toolExecutingByAgent.get(agentId)) return;
 
