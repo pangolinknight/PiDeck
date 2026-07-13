@@ -528,6 +528,8 @@ export function App() {
   const [externalEditors, setExternalEditors] = useState<ExternalEditor[]>([]);
   const [editorsOpen, setEditorsOpen] = useState(false);
   const [editorsAnchor, setEditorsAnchor] = useState<{ x: number; y: number } | null>(null);
+  /** 右键项目也能唤起编辑器气泡，所以这里显式记录本次要打开的目录，避免依赖运行中 agent 的 cwd。 */
+  const [editorsTargetPath, setEditorsTargetPath] = useState<string | null>(null);
   const editorsRef = useRef<HTMLDivElement>(null);
 
   // 点击编辑器气泡外部时关闭
@@ -536,6 +538,8 @@ export function App() {
     const handler = (event: MouseEvent) => {
       if (editorsRef.current && !editorsRef.current.contains(event.target as Node)) {
         setEditorsOpen(false);
+        setEditorsAnchor(null);
+        setEditorsTargetPath(null);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -5784,11 +5788,17 @@ ${goalTextRef.current}
               active: editorsOpen,
               label: t("app.openWithEditor"),
               onClick: (e) => {
+                const projectPath =
+                  activeAgent?.cwd ||
+                  (activeProject && !isChatProject(activeProject)
+                    ? activeProject.path
+                    : null);
+                setEditorsTargetPath(projectPath);
                 setEditorsOpen((open) => !open);
                 const btn = (e?.currentTarget as HTMLElement)?.closest("button");
                 if (btn) {
                   const rect = btn.getBoundingClientRect();
-                  setEditorsAnchor({ x: rect.left - 4, y: rect.top });
+                  setEditorsAnchor(adjustMenuPos(rect.left - 4, rect.top, 220, 280));
                 }
               },
               icon: <Code size={17} />,
@@ -5991,6 +6001,12 @@ ${goalTextRef.current}
           onClose={() => setProjectMenu(null)}
           onRevealProject={() => {
             void api.files.showInFolder(projectMenu.project.path);
+            setProjectMenu(null);
+          }}
+          onOpenWithEditor={() => {
+            setEditorsTargetPath(projectMenu.project.path);
+            setEditorsAnchor(adjustMenuPos(projectMenu.x, projectMenu.y, 220, 280));
+            setEditorsOpen(true);
             setProjectMenu(null);
           }}
           onImportCodexSessions={() => openCodexImport(projectMenu.project)}
@@ -6588,7 +6604,7 @@ ${goalTextRef.current}
           className="editors-popover"
           style={{
             position: "fixed",
-            right: window.innerWidth - editorsAnchor.x,
+            left: editorsAnchor.x,
             top: editorsAnchor.y,
           }}
           onClick={(e) => e.stopPropagation()}
@@ -6601,11 +6617,7 @@ ${goalTextRef.current}
                 key={editor.id}
                 className="editors-popover-item"
                 onClick={() => {
-                  const projectPath =
-                    activeAgent?.cwd ||
-                    (activeProject && !isChatProject(activeProject)
-                      ? activeProject.path
-                      : undefined);
+                  const projectPath = editorsTargetPath;
                   if (projectPath) {
                     void api.editors.openProject(editor, projectPath).catch((error) => {
                       showToast(
@@ -6618,6 +6630,7 @@ ${goalTextRef.current}
                   }
                   setEditorsOpen(false);
                   setEditorsAnchor(null);
+                  setEditorsTargetPath(null);
                 }}
               >
                 <span className={`editor-logo ${editor.id}`}>

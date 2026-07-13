@@ -4475,6 +4475,7 @@ export function ProjectContextMenu(props: {
 	menu: { x: number; y: number; project: Project };
 	onClose: () => void;
 	onRevealProject: () => void;
+	onOpenWithEditor: () => void;
 	onImportCodexSessions: () => void;
 	onImportClaudeSessions: () => void;
 	onImportOpenCodeSessions: () => void;
@@ -4493,6 +4494,7 @@ export function ProjectContextMenu(props: {
 				onClick={(event) => event.stopPropagation()}
 			>
 				<button onClick={props.onRevealProject}>{t("menu.revealProject")}</button>
+				<button onClick={props.onOpenWithEditor}>{t("app.openWithEditor")}</button>
 				<button onClick={props.onImportCodexSessions}>
 					{t("menu.importCodex")}
 				</button>
