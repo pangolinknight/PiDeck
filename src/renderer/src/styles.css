@@ -5474,23 +5474,31 @@ body.is-composer-resizing .composer-resize-handle::after {
   outline-offset: 1px;
 }
 .extension-widget-card-content {
+  /* 扩展内容按“可见行数”限高：Todo 项一多时只展示前 N 行，剩余内容在卡片内部滚动，避免遮挡输入区。 */
+  --extension-widget-visible-lines: 8;
+  --extension-widget-line-height: 20px;
   padding: 0 8px 6px 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  /* 单个 Todo/Plan widget 过长时在卡片内滚动，保留标题栏和关闭入口可见。 */
-  max-height: clamp(72px, 18vh, 180px);
+  min-height: 0;
+  max-height: calc(
+    var(--extension-widget-visible-lines) * var(--extension-widget-line-height) +
+      (var(--extension-widget-visible-lines) - 1) * 2px
+  );
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 .extension-widget-card-line {
+  flex: 0 0 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-family-business);
   font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
-  line-height: 1.5;
+  line-height: var(--extension-widget-line-height);
 }
 .composer-footer {
   display: flex;
