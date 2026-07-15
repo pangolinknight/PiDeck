@@ -2,8 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DiffEditor, Editor } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { t } from "../../i18n";
-import { Columns3, Edit3, Maximize2, X } from "lucide-react";
+import { Columns3, Edit3, Maximize2, Minimize2, X, Eye, FileCode } from "lucide-react";
 import { setupMonaco } from "../../utils/monacoSetup";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeKatex from "rehype-katex";
+import { defaultUrlTransform } from "react-markdown";
 
 const BINARY_EXTENSIONS = new Set([
 	"png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "svg",
@@ -29,6 +33,10 @@ type ViewMode = "view" | "diff";
 export function FileDiffViewer(props: {
 	filePath: string;
 	mode?: ViewMode;
+	/** 展示模式：弹框（modal）或侧栏（drawer） */
+	displayMode?: "modal" | "drawer";
+	/** 在弹框/侧栏之间切换 */
+	onToggleMode?: () => void;
 	onClose: () => void;
 	readContent: (path: string) => Promise<string>;
 	/** 从会话消息 meta 中提取的工具执行前原始内容，优先于 Git HEAD。 */
@@ -60,6 +68,11 @@ export function FileDiffViewer(props: {
 	const diffEditorRef = useRef<Monaco.editor.IStandaloneDiffEditor | null>(null);
 
 	const isDiffMode = props.mode === "diff";
+	const fileName = props.filePath.split(/[/\\]/).pop() ?? props.filePath;
+	const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+	const isMarkdown = ext === "md" || ext === "mdx";
+	// 只读视图下 markdown 文件默认启用预览；差异模式或编辑模式保持源码视图。
+	const [preview, setPreview] = useState(isMarkdown && !isDiffMode && readOnly);
 
 	useEffect(() => {
 		ensureMonaco();
@@ -213,8 +226,6 @@ export function FileDiffViewer(props: {
 		};
 	}, []);
 
-	const fileName = props.filePath.split(/[/\\]/).pop() ?? props.filePath;
-	const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
 	const language = extToMonacoLanguage(ext);
 
 	const editorOptions: Monaco.editor.IStandaloneEditorConstructionOptions = {
@@ -252,77 +263,121 @@ export function FileDiffViewer(props: {
 		compactMode: true,
 	};
 
-	return (
-		<div className="modal-backdrop" onClick={readOnly ? handleClose : undefined}>
-			<div className="file-diff-modal" onClick={(e) => e.stopPropagation()}>
-				<div className="file-diff-header">
-					<span className="file-diff-title" title={props.filePath}>
-						{fileName}
-						{dirty && " · 未保存"}
-						{showHint && <span className="file-diff-hint">{t("app.saveFileShortcut")}</span>}
-					</span>
-					<div className="file-diff-header-actions">
-						{isDiffMode && !loading && !error && (
-							<button
-								className="file-diff-toggle-btn"
-								title={sideBySide ? t("app.showSingle") : t("app.showSplit")}
-								onClick={() => setSideBySide(!sideBySide)}
-							>
-								{sideBySide ? <Maximize2 size={15} /> : <Columns3 size={15} />}
-							</button>
-						)}
-						{props.saveContent && readOnly && (
-							<button
-								className="file-diff-toggle-btn"
-								title={t("app.editFile")}
-								onClick={handleEditToggle}
-							>
-								<Edit3 size={15} />
-							</button>
-						)}
-						{!readOnly && props.saveContent && (
-							<button
-								className="file-diff-toggle-btn"
-								title={t("app.exitEdit")}
-								onClick={handleExitEdit}
-							>
-								<X size={15} />
-							</button>
-						)}
-						<button className="file-diff-close" onClick={handleClose} aria-label={t("common.close")}>
-							<X size={18} />
+	const displayMode = props.displayMode ?? "drawer";
+	const headerContent = (
+		<>
+			<div className="file-diff-header">
+				<span className="file-diff-title" title={props.filePath}>
+					{fileName}
+					{dirty && " · 未保存"}
+					{showHint && <span className="file-diff-hint">{t("app.saveFileShortcut")}</span>}
+				</span>
+				<div className="file-diff-header-actions">
+					{isMarkdown && !isDiffMode && !loading && !error && (
+						<button
+							className="file-diff-toggle-btn"
+							title={preview ? t("editor.source") : t("editor.preview")}
+							onClick={() => setPreview(!preview)}
+						>
+							{preview ? <FileCode size={15} /> : <Eye size={15} />}
 						</button>
-					</div>
-				</div>
-				<div className="file-diff-body">
-					{loading && <div className="file-diff-loading">{t("common.loading")}</div>}
-					{error && <div className="file-diff-error">{error}</div>}
-					{!loading && !error && (
-						<>
-							<div style={{ display: isDiffMode ? "none" : "flex", height: "100%", flexDirection: "column" }}>
-								<Editor
-									value={content}
-									language={language}
-									theme={props.theme === "dark" ? "vs-dark" : "vs"}
-									options={editorOptions}
-									onMount={handleEditorMount}
-									onChange={handleEditorChange}
-								/>
-							</div>
-							<div style={{ display: !isDiffMode ? "none" : "flex", height: "100%", flexDirection: "column" }}>
-								<DiffEditor
-									original={original}
-									modified={content}
-									language={language}
-									theme={props.theme === "dark" ? "vs-dark" : "vs"}
-									options={diffOptions}
-									onMount={handleDiffEditorMount}
-								/>
-							</div>
-						</>
 					)}
+					{isDiffMode && !loading && !error && (
+						<button
+							className="file-diff-toggle-btn"
+							title={sideBySide ? t("app.showSingle") : t("app.showSplit")}
+							onClick={() => setSideBySide(!sideBySide)}
+						>
+							{sideBySide ? <Maximize2 size={15} /> : <Columns3 size={15} />}
+						</button>
+					)}
+					{props.saveContent && readOnly && (
+						<button
+							className="file-diff-toggle-btn"
+							title={t("app.editFile")}
+							onClick={handleEditToggle}
+						>
+							<Edit3 size={15} />
+						</button>
+					)}
+					{!readOnly && props.saveContent && (
+						<button
+							className="file-diff-toggle-btn"
+							title={t("app.exitEdit")}
+							onClick={handleExitEdit}
+						>
+							<X size={15} />
+						</button>
+					)}
+					{props.onToggleMode && (
+						<button
+							className="file-diff-toggle-btn"
+							title={displayMode === "modal" ? t("app.minimizeToDrawer") : t("app.expandToModal")}
+							onClick={props.onToggleMode}
+						>
+							{displayMode === "modal" ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+						</button>
+					)}
+					<button className="file-diff-close" onClick={handleClose} aria-label={t("common.close")}>
+						<X size={18} />
+					</button>
 				</div>
 			</div>
+			<div className="file-diff-body">
+				{loading && <div className="file-diff-loading">{t("common.loading")}</div>}
+				{error && <div className="file-diff-error">{error}</div>}
+				{!loading && !error && (
+					<>
+						{!isDiffMode && preview && (
+							<div className="file-diff-preview">
+								<ReactMarkdown
+									remarkPlugins={[remarkGfm]}
+									rehypePlugins={[rehypeKatex]}
+									urlTransform={defaultUrlTransform}
+								>
+									{content}
+								</ReactMarkdown>
+							</div>
+						)}
+						<div style={{ display: isDiffMode || !preview ? "flex" : "none", height: "100%", flexDirection: "column" }}>
+							<Editor
+								value={content}
+								language={language}
+								theme={props.theme === "dark" ? "vs-dark" : "vs"}
+								options={editorOptions}
+								onMount={handleEditorMount}
+								onChange={handleEditorChange}
+							/>
+						</div>
+						<div style={{ display: !isDiffMode ? "none" : "flex", height: "100%", flexDirection: "column" }}>
+							<DiffEditor
+								original={original}
+								modified={content}
+								language={language}
+								theme={props.theme === "dark" ? "vs-dark" : "vs"}
+								options={diffOptions}
+								onMount={handleDiffEditorMount}
+							/>
+						</div>
+					</>
+				)}
+			</div>
+		</>
+	);
+
+	if (displayMode === "modal") {
+		return (
+			<div className="modal-backdrop" onClick={readOnly ? handleClose : undefined}>
+				<div className="file-diff-modal" onClick={(e) => e.stopPropagation()}>
+					{headerContent}
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="file-diff-viewer">
+			{headerContent}
 		</div>
 	);
 }

@@ -12587,6 +12587,13 @@ a.config-btn {
   overflow: hidden;
 }
 
+.file-diff-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
 .file-diff-header {
   display: flex;
   align-items: center;

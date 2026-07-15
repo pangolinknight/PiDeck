@@ -752,6 +752,19 @@ export function App() {
   const [diffViewMode, setDiffViewMode] = useState<"view" | "diff">("view");
   const [diffViewOriginalContent, setDiffViewOriginalContent] = useState<string>("");
   const [diffViewModifiedContent, setDiffViewModifiedContent] = useState<string | undefined>(undefined);
+  /** 编辑器展示模式：弹框或侧栏 */
+  const [editorMode, setEditorMode] = useState<"modal" | "drawer">("drawer");
+  const toggleEditorMode = useCallback(() => {
+    setEditorMode((prev) => {
+      const next = prev === "modal" ? "drawer" : "modal";
+      if (next === "drawer") {
+        // 切到侧栏时确保 drawer 打开
+        setDrawer("editor");
+        setDrawerCollapsed(false);
+      }
+      return next;
+    });
+  }, []);
   const [codexImportProject, setCodexImportProject] = useState<Project | null>(
     null,
   );
@@ -2498,6 +2511,11 @@ export function App() {
     // 清除之前 diffFilePath 可能残留的 modifiedContent 缓存，
     // 避免 FileDiffViewer 跳过磁盘读取而展示旧数据。
     setDiffViewModifiedContent(undefined);
+    // 侧栏模式下才打开 drawer；弹框模式由 <FileDiffViewer> 自行渲染
+    if (editorMode === "drawer") {
+      setDrawer("editor");
+      setDrawerCollapsed(false);
+    }
   }
 
   function diffFilePath(path: string, originalContent?: string, content?: string) {
@@ -2510,6 +2528,11 @@ export function App() {
     // 修改后内容优先使用调用侧传入的 content（历史会话摘要数据），
     // 其次使用当前会话的 modifiedFiles 缓存；两者皆无时 FileDiffViewer 会回退到读磁盘。
     setDiffViewModifiedContent(content ?? modified?.content ?? undefined);
+    // 侧栏模式下才打开 drawer
+    if (editorMode === "drawer") {
+      setDrawer("editor");
+      setDrawerCollapsed(false);
+    }
   }
 
   async function refreshSessionHistory(projectId = sessionsProjectId) {
@@ -5878,14 +5901,31 @@ ${goalTextRef.current}
         data-open={drawer && !drawerCollapsed}
         data-rendered={Boolean(drawerContentPanel)}
       >
-        {drawerContentPanel === "browser" && !drawerCollapsed && !browserFullscreen ? (
+        {editorMode === "drawer" && drawerContentPanel === "editor" && !drawerCollapsed && diffViewFile ? (
+          <Suspense fallback={<div className="drawer-content-frame"><div className="file-diff-loading">Loading...</div></div>}>
+            <FileDiffViewer
+              displayMode="drawer"
+              filePath={diffViewFile}
+              mode={diffViewMode}
+              onToggleMode={toggleEditorMode}
+              originalContent={diffViewMode === "diff" ? diffViewOriginalContent : undefined}
+              modifiedContent={diffViewModifiedContent}
+              onClose={() => { setDiffViewFile(null); setDiffViewMode("view"); setDrawer(null); }}
+              readContent={(path) => api.files.readContent(path)}
+              readOriginalContent={(path) => api.git.originalContent(path)}
+              saveContent={(path, content) => api.files.writeContent(path, content)}
+              theme={document.documentElement.dataset.theme === "dark" ? "dark" : "light"}
+              maxFileSizeMB={settings.maxEditorFileSizeMB}
+            />
+          </Suspense>
+        ) : drawerContentPanel === "browser" && !drawerCollapsed && !browserFullscreen ? (
           <div className="drawer-content-frame">
             <BrowserPanel
               onClose={() => setDrawer(null)}
               onToggleFullscreen={() => setBrowserFullscreen(true)}
             />
           </div>
-        ) : drawerContentPanel && drawerContentPanel !== "browser" ? (
+        ) : drawerContentPanel && drawerContentPanel !== "browser" && drawerContentPanel !== "editor" ? (
           <LazyWrapper
             className="drawer-content-frame"
             enabled={true}
@@ -6521,11 +6561,13 @@ ${goalTextRef.current}
         />
       </Suspense>
       )}
-      {diffViewFile && (
+      {editorMode === "modal" && diffViewFile && (
         <Suspense fallback={<div className="modal-backdrop"><span className="file-diff-loading">Loading...</span></div>}>
         <FileDiffViewer
+          displayMode="modal"
           filePath={diffViewFile}
           mode={diffViewMode}
+          onToggleMode={toggleEditorMode}
           originalContent={diffViewMode === "diff" ? diffViewOriginalContent : undefined}
           modifiedContent={diffViewModifiedContent}
           onClose={() => { setDiffViewFile(null); setDiffViewMode("view"); }}
