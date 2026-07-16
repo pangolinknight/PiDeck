@@ -1382,8 +1382,8 @@ export function EmptyState(props: { hasProject: boolean; onCreate: () => void })
 			<div className="empty-logo">
 				<svg
 					viewBox="140 140 520 520"
-					width="40"
-					height="40"
+					width="66"
+					height="66"
 					aria-hidden="true"
 				>
 					<path
@@ -1394,8 +1394,13 @@ export function EmptyState(props: { hasProject: boolean; onCreate: () => void })
 					<path fill="#fff" d="M517.36 400H634.72V634.72H517.36Z" />
 				</svg>
 			</div>
-			<h2>{t("app.startAgent")}</h2>
-			<p>{t("app.emptyGuide")}</p>
+			<div className="empty-tagline" aria-label={`${t("app.emptyTaglineLine1")} ${t("app.emptyTaglineLine2Prefix")}${t("app.emptyTaglineYours")}`}>
+				<span>{t("app.emptyTaglineLine1")}</span>
+				<span>
+					{t("app.emptyTaglineLine2Prefix")}
+					<em className="empty-tagline-yours">{t("app.emptyTaglineYours")}</em>
+				</span>
+			</div>
 			{props.hasProject ? (
 				<button onClick={props.onCreate}>{t("app.createAgent")}</button>
 			) : (
