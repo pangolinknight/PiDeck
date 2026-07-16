@@ -36,7 +36,7 @@ title: 贡献者
   <div class="contributor-info">
     <strong>frostime</strong>
     <span class="contributor-handle">@frostime</span>
-    <p>自定义字体/字号与缩放比例、模型选择器自动滚动、最大推理等级、RPC 扩展 UI 生命周期修复</p>
+    <p>自定义字体/字号与缩放比例、模型选择器自动滚动、最大推理等级、RPC 扩展 UI 生命周期修复、Pi session_info_changed 事件同步侧边栏标题</p>
     <a href="https://github.com/frostime" target="_blank" rel="noreferrer">GitHub</a>
   </div>
 </div>
