@@ -2388,22 +2388,7 @@ export function App() {
     }
   }, [displayAgents, activeAgentId, modifiedFiles, messagesByAgent]);
 
-  // 检测 goal_complete tool call → 标记 goal 完成
-  useEffect(() => {
-    if (goalStatusRef.current !== "active") return;
-    const goalAgentMessages = activeAgentId ? messagesByAgent[activeAgentId] : undefined;
-    if (!goalAgentMessages) return;
-    for (let i = goalAgentMessages.length - 1; i >= 0; i--) {
-      const message = goalAgentMessages[i];
-      if (message.role === "tool" && message.meta?.toolName === "goal_complete") {
-        goalStatusRef.current = "complete";
-        goalContinuationPendingRef.current = false;
-        setGoalStatus("complete");
-        setGoalCompletedAt(Date.now());
-        break;
-      }
-    }
-  }, [messagesByAgent, activeAgentId]);
+  // 已删除内置 goal 完成检测。
 
   // 监听用户发送消息的编辑事件,将消息填入输入框
   useEffect(() => {
@@ -3905,84 +3890,10 @@ export function App() {
     (activeAgent.status === "running" || activeRuntimeState?.isStreaming),
   );
 
-  // 切换 agent 时不能沿用上一会话的 busy 边沿,否则旧 agent 结束可能误触发新 agent 的 goal 续接。
+  // 已删除内置 goal 自动续接。
   useEffect(() => {
-    prevIsAgentBusyRef.current = false;
-    goalContinuationPendingRef.current = false;
-    goalLastResponseSignatureRef.current = "";
-  }, [activeAgentId]);
-
-  // 自动续接：busy → idle 时，如果 goal 仍 active 则自动发送续接
-  useEffect(() => {
-    const busy = isAgentBusy;
-    const wasBusy = prevIsAgentBusyRef.current;
-    prevIsAgentBusyRef.current = busy;
-    if (wasBusy && !busy && goalStatusRef.current === "active" && activeAgentId) {
-      const text = goalTextRef.current;
-      // 直接扫描消息确认是否有 goal_complete（防范 effect 时序问题）
-      const goalMsgs = activeAgentId ? messagesByAgent[activeAgentId] : undefined;
-      if (goalMsgs?.some((m) => m.role === "tool" && m.meta?.toolName === "goal_complete")) {
-        goalStatusRef.current = "complete";
-        setGoalStatus("complete");
-        setGoalCompletedAt(Date.now());
-        return;
-      }
-
-      const latestResponseSignature =
-        goalMsgs
-          ?.filter((message) => message.role === "assistant" || message.role === "tool")
-          .slice(-1)
-          .map((message) => `${message.role}:${message.id}:${message.timestamp}`)[0] ?? "";
-
-      // 如果上一次自动续接后没有产生新的 assistant/tool 消息,说明只是状态抖动或发送失败重入,
-      // 继续 followUp 只会堆叠同一目标,因此暂停交给用户检查而不是无限循环。
-      if (
-        goalIterationRef.current > 0 &&
-        goalLastResponseSignatureRef.current === latestResponseSignature
-      ) {
-        goalStatusRef.current = "paused";
-        goalContinuationPendingRef.current = false;
-        setGoalStatus("paused");
-        showToast("🎯 Goal paused: no new agent response after auto continuation.", 4000);
-        return;
-      }
-
-      const iteration = goalIterationRef.current + 1;
-
-      // 达到最大续接次数时暂停,保留未完成状态,避免模型未调用 goal_complete 时无限自动续接。
-      if (iteration > GOAL_MAX_CONTINUATIONS) {
-        goalStatusRef.current = "paused";
-        goalContinuationPendingRef.current = false;
-        setGoalStatus("paused");
-        showToast(`🎯 Goal paused after ${GOAL_MAX_CONTINUATIONS} auto continuations.`, 4000);
-        return;
-      }
-
-      if (!goalContinuationPendingRef.current && text) {
-        goalIterationRef.current = iteration;
-        goalContinuationPendingRef.current = true;
-        goalLastResponseSignatureRef.current = latestResponseSignature;
-        const continuationMsg = `[goal 自动续接 #${iteration}]
-当前目标仍未完成，请继续工作:
-<goal_objective>
-${text}
-</goal_objective>
-
-继续完成该目标。不要停止在分析、计划、TODO 或部分修改上。彻底完成后调用 goal_complete。`;
-        api.agents.prompt({
-          agentId: activeAgentId,
-          message: continuationMsg,
-          description: "[goal 自动续接]",
-          streamingBehavior: "followUp",
-        }).catch(() => {
-          goalContinuationPendingRef.current = false;
-        });
-      }
-    }
-    if (busy) {
-      goalContinuationPendingRef.current = false;
-    }
-  }, [isAgentBusy, activeAgentId, api.agents, messagesByAgent]);
+    prevIsAgentBusyRef.current = isAgentBusy;
+  }, [isAgentBusy]);
 
   /** 解析消息中的 & 会话引用，将 chip 替换为引用上下文 */
   async function resolveSessionRefs(message: string): Promise<string> {
@@ -4035,12 +3946,7 @@ ${text}
 
     const trimmedMessage = message.trim();
 
-    // ── /goal 命令处理 ──
-    if (trimmedMessage.startsWith("/goal")) {
-      handleGoalCommand(trimmedMessage);
-      setPrompt("");
-      return;
-    }
+    // 已删除内置 /goal 拦截，命令直接发给 agent。
 
     // ── /compact 命令处理 ──
     if (/^\/compact(?:\s|$)/.test(trimmedMessage)) {
@@ -4141,105 +4047,7 @@ ${text}
     requestAnimationFrame(scrollOnNewMessage);
   }
 
-  /** 处理 /goal 命令 */
-  function handleGoalCommand(input: string) {
-    const trimmed = input.replace(/^\/goal/, "").trim();
-    const first = trimmed.split(/\s+/)[0];
-
-    if (!trimmed || first === "status") {
-      if (goalStatusRef.current === "none") {
-        showToast(!activeAgentId ? t("goal.noGoal") : `Usage: /goal <objective>\nNo goal set.`, 3000);
-      } else {
-        const elapsed = goalStartedAtRef.current ? Math.floor((Date.now() - goalStartedAtRef.current) / 1000) : 0;
-        const elapsedStr = elapsed >= 60 ? `${Math.floor(elapsed / 60)}m${elapsed % 60}s` : `${elapsed}s`;
-        const tokenHint = goalIterationRef.current > 0 ? ` (续接 ${goalIterationRef.current} 次)` : "";
-        showToast(`🎯 ${goalStatusRef.current === "complete" ? "已完成" : "进行中"}: ${goalTextRef.current}\n耗时: ${elapsedStr} | 状态: ${goalStatusRef.current}${tokenHint}`, 4000);
-      }
-      return;
-    }
-
-    if (first === "clear" || first === "stop") {
-      goalStatusRef.current = "none";
-      goalTextRef.current = "";
-      goalStartedAtRef.current = 0;
-      goalIterationRef.current = 0;
-      goalContinuationPendingRef.current = false;
-      goalLastResponseSignatureRef.current = "";
-      setGoalStatus("none");
-      setGoalText("");
-      setGoalStartedAt(0);
-      setGoalCompletedAt(0);
-      showToast("🎯 Goal cleared", 2000);
-      return;
-    }
-
-    if (first === "pause") {
-      if (goalStatusRef.current !== "active") {
-        showToast("No active goal to pause.", 2000);
-        return;
-      }
-      goalStatusRef.current = "paused";
-      setGoalStatus("paused");
-      goalContinuationPendingRef.current = false;
-      showToast(`🎯 Goal paused: ${goalTextRef.current}`, 3000);
-      return;
-    }
-
-    if (first === "resume") {
-      if (goalStatusRef.current !== "paused") {
-        showToast("No paused goal to resume.", 2000);
-        return;
-      }
-      goalStatusRef.current = "active";
-      setGoalStatus("active");
-      goalContinuationPendingRef.current = false;
-      goalLastResponseSignatureRef.current = "";
-      void submitPromptSnapshot(activeAgentId!, `[goal 续接] 之前暂停的目标已恢复，请继续完成:
-<goal_objective>
-${goalTextRef.current}
-</goal_objective>`, undefined, "followUp");
-      showToast(`🎯 Goal resumed: ${goalTextRef.current}`, 3000);
-      return;
-    }
-
-    // /goal <objective> — 启动新目标
-    const objective = trimmed;
-    const existing = goalStatusRef.current;
-    if (existing === "active") {
-      // 使用自定义 ConfirmDialog 弹框确认替换当前目标
-      setConfirmDialog({
-        title: t("goal.replaceTitle"),
-        message: t("goal.replaceConfirm", { goal: goalTextRef.current ?? "" }),
-        danger: false,
-        confirmLabel: t("common.confirm"),
-        onConfirm: () => {
-          setConfirmDialog(null);
-          startNewGoal(objective);
-        },
-      });
-      return;
-    }
-    startNewGoal(objective);
-  }
-
-  /** 在确认后实际启动新目标（从 /goal 和 replace 确认回调共享） */
-  function startNewGoal(objective: string) {
-
-    goalTextRef.current = objective;
-    goalStatusRef.current = "active";
-    goalStartedAtRef.current = Date.now();
-    goalIterationRef.current = 0;
-    goalContinuationPendingRef.current = false;
-    goalLastResponseSignatureRef.current = "";
-    setGoalText(objective);
-    setGoalStatus("active");
-    setGoalStartedAt(Date.now());
-    setGoalCompletedAt(0);
-
-    // 将目标文本作为普通消息发送（不使用 followUp，避免显示错误的消息标签）
-    void submitPromptSnapshot(activeAgentId!, objective);
-    // 目标文本作为用户消息显示在对话中，goal 状态可通过 /goal status 查看
-  }
+  // 已删除内置 /goal 与 startNewGoal 实现。
 
   async function submitPromptSnapshot(
     agentId: string,
